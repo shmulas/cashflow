@@ -446,12 +446,7 @@ async function removeOther(id){
   state.other=state.other.filter(o=>o.id!==id);renderOther();updateAll();toast('נמחק');
 }
 
-(async()=>{
-  try{
-    const cfg=await fetch('/api/config').then(r=>r.json());
-    BASE=cfg.url;KEY=cfg.key;
-  }catch(e){console.error('Config fetch failed',e);}
-  function renderBanks(){
+function renderBanks(){
   const map={בינלאומי:'Intl',פועלים:'Poalim',לאומי:'Leumi',מזרחי:'Mizrahi'};
   Object.keys(map).forEach(bank=>{
     const el=document.getElementById('bank'+map[bank]);
@@ -474,7 +469,12 @@ async function saveBank(bank,val){
   }catch(e){toast('שגיאה: '+e.message);}
 }
 
-['salMonth','ccMonth','incMonth','otherMonth'].forEach(buildMonthOptions);
+(async()=>{
+  try{
+    const cfg=await fetch('/api/config').then(r=>r.json());
+    BASE=cfg.url;KEY=cfg.key;
+  }catch(e){console.error('Config fetch failed',e);}
+  ['salMonth','ccMonth','incMonth','otherMonth'].forEach(buildMonthOptions);
   loadAll();
 })();
 </script>
