@@ -27,7 +27,7 @@ th{text-align:right;padding:6px 8px;color:#666;font-weight:400;border-bottom:0.5
 td{padding:6px 8px;border-bottom:0.5px solid #e0e0e0;white-space:nowrap}
 tr:last-child td{border-bottom:none}
 .bank-tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px}
-.b-intl{background:#E6F1FB;color:#0C447C}.b-poalim{background:#E1F5EE;color:#0F6E56}.b-leumi{background:#FAEEDA;color:#633806}
+.b-intl{background:#E6F1FB;color:#0C447C}.b-poalim{background:#E1F5EE;color:#0F6E56}.b-leumi{background:#FAEEDA;color:#633806}.b-mizrahi{background:#F3E8FB;color:#5B2D8E}
 input,select{width:100%;padding:7px 10px;border:0.5px solid #e0e0e0;border-radius:8px;background:#fff;color:#1a1a1a;font-size:13px;outline:none}
 input:focus,select:focus{border-color:#aaa}
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px}
@@ -81,10 +81,11 @@ button.danger:hover{background:#FCEBEB}
   <div class="chart-wrap"><canvas id="mainChart" role="img" aria-label="תרשים תזרים חודשי"></canvas></div>
   <div class="card" style="margin-top:1rem">
     <div class="card-title"><i class="ti ti-building-bank" aria-hidden="true"></i> יתרות בנקים (נכון להיום)</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:8px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1rem;margin-bottom:8px">
       <div><div class="form-label">בינלאומי (₪)</div><input type="number" id="bankIntl" onchange="saveBank('בינלאומי',this.value)" placeholder="0"></div>
       <div><div class="form-label">פועלים (₪)</div><input type="number" id="bankPoalim" onchange="saveBank('פועלים',this.value)" placeholder="0"></div>
       <div><div class="form-label">לאומי (₪)</div><input type="number" id="bankLeumi" onchange="saveBank('לאומי',this.value)" placeholder="0"></div>
+      <div><div class="form-label">מזרחי (₪)</div><input type="number" id="bankMizrahi" onchange="saveBank('מזרחי',this.value)" placeholder="0"></div>
     </div>
     <div style="font-size:12px;color:#666">סה"כ נזילות: <strong id="bankTotalLabel" style="color:#1D9E75">₪0</strong></div>
   </div>
@@ -112,7 +113,7 @@ button.danger:hover{background:#FCEBEB}
   <div class="card">
     <div class="card-title"><i class="ti ti-plus" aria-hidden="true"></i> הוסף הלוואה</div>
     <div class="form-grid">
-      <div><div class="form-label">בנק</div><select id="loanBank"><option>בינלאומי</option><option>פועלים</option><option>לאומי</option><option>אחר</option></select></div>
+      <div><div class="form-label">בנק</div><select id="loanBank"><option>בינלאומי</option><option>פועלים</option><option>לאומי</option><option>מזרחי</option><option>אחר</option></select></div>
       <div><div class="form-label">שם</div><input type="text" id="loanName"></div>
       <div><div class="form-label">קרן (₪)</div><input type="number" id="loanPrincipal"></div>
       <div><div class="form-label">יתרה (₪)</div><input type="number" id="loanBalance"></div>
@@ -213,7 +214,7 @@ button.danger:hover{background:#FCEBEB}
 let BASE, KEY;
 
 const fmt=v=>'₪'+Math.round(Math.abs(v)).toLocaleString();
-const bankClass=b=>b==='בינלאומי'?'b-intl':b==='פועלים'?'b-poalim':'b-leumi';
+const bankClass=b=>b==='בינלאומי'?'b-intl':b==='פועלים'?'b-poalim':b==='לאומי'?'b-leumi':b==='מזרחי'?'b-mizrahi':'';
 const state={loans:[],income:[],salary:[],cc:[],other:[],banks:[]};
 let mainChart=null;
 
@@ -451,7 +452,7 @@ async function removeOther(id){
     BASE=cfg.url;KEY=cfg.key;
   }catch(e){console.error('Config fetch failed',e);}
   function renderBanks(){
-  const map={בינלאומי:'Intl',פועלים:'Poalim',לאומי:'Leumi'};
+  const map={בינלאומי:'Intl',פועלים:'Poalim',לאומי:'Leumi',מזרחי:'Mizrahi'};
   Object.keys(map).forEach(bank=>{
     const el=document.getElementById('bank'+map[bank]);
     const found=state.banks.find(b=>b.bank===bank);
