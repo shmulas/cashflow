@@ -250,12 +250,13 @@ async function loadAll(){
   }catch(e){console.error(e);toast('שגיאת חיבור: '+e.message);}
 }
 
+const localYM=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 function buildMonthOptions(selId){
   const sel=document.getElementById(selId);if(!sel)return;
-  const now=new Date(),cur=sel.value;sel.innerHTML='';
+  const now=new Date(),cur=sel.value||localYM(now);sel.innerHTML='';
   for(let i=-2;i<18;i++){
     const d=new Date(now.getFullYear(),now.getMonth()+i,1);
-    const val=d.toISOString().slice(0,7);
+    const val=localYM(d);
     const opt=document.createElement('option');
     opt.value=val;opt.textContent=d.toLocaleString('he',{month:'long',year:'numeric'});
     if(val===cur)opt.selected=true;
@@ -274,8 +275,8 @@ function showTab(name){
 
 function getMonths(){
   const now=new Date(),months=[];
-  for(let i=-1;i<13;i++){const d=new Date(now.getFullYear(),now.getMonth()+i,1);months.push(d.toISOString().slice(0,7));}
-  [...state.income,...state.salary,...state.cc,...state.other].forEach(r=>{if(!months.includes(r.month))months.push(r.month);});
+  for(let i=0;i<13;i++){const d=new Date(now.getFullYear(),now.getMonth()+i,1);months.push(localYM(d));}
+  [...state.income,...state.salary,...state.cc,...state.other].forEach(r=>{if(r.month>=localYM(now)&&!months.includes(r.month))months.push(r.month);});
   return[...new Set(months)].sort();
 }
 
