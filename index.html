@@ -254,7 +254,7 @@ const localYM=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 function buildMonthOptions(selId){
   const sel=document.getElementById(selId);if(!sel)return;
   const now=new Date(),cur=sel.value||localYM(now);sel.innerHTML='';
-  for(let i=-2;i<18;i++){
+  for(let i=0;i<18;i++){
     const d=new Date(now.getFullYear(),now.getMonth()+i,1);
     const val=localYM(d);
     const opt=document.createElement('option');
@@ -274,10 +274,9 @@ function showTab(name){
 }
 
 function getMonths(){
-  const now=new Date(),months=[];
+  const now=new Date(),cur=localYM(now),months=[];
   for(let i=0;i<13;i++){const d=new Date(now.getFullYear(),now.getMonth()+i,1);months.push(localYM(d));}
-  [...state.income,...state.salary,...state.cc,...state.other].forEach(r=>{if(r.month>=localYM(now)&&!months.includes(r.month))months.push(r.month);});
-  return[...new Set(months)].sort();
+  return months;
 }
 
 function loanPmt(l,m){if(l.balloon)return m===l.end?l.payment:0;return(m>=l.start&&m<=l.end)?l.payment:0;}
