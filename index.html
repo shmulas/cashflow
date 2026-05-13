@@ -55,6 +55,7 @@ button.danger:hover{background:#FCEBEB}
   <div class="kpi"><div class="kpi-label">הכנסות צפויות</div><div class="kpi-val pos" id="kpiIn">₪0</div></div>
   <div class="kpi"><div class="kpi-label">סה"כ הוצאות</div><div class="kpi-val neg" id="kpiOut">₪0</div></div>
   <div class="kpi"><div class="kpi-label">תזרים נטו</div><div class="kpi-val neu" id="kpiNet">₪0</div></div>
+  <div class="kpi"><div class="kpi-label">יתרת בנקים</div><div class="kpi-val pos" id="kpiBanks">₪0</div></div>
   <div class="kpi"><div class="kpi-label">חוב הלוואות</div><div class="kpi-val neg" id="kpiDebt">₪0</div></div>
   <div class="kpi"><div class="kpi-label">ראנוויי</div><div class="kpi-val neu" id="kpiRunway">—</div></div>
 </div>
@@ -71,10 +72,22 @@ button.danger:hover{background:#FCEBEB}
 <div class="section active" id="tab-overview">
   <div class="legend">
     <span><span class="leg-dot" style="background:#1D9E75"></span>הכנסות</span>
-    <span><span class="leg-dot" style="background:#E24B4A"></span>הוצאות</span>
-    <span><span class="leg-dot" style="background:#185FA5"></span>נטו</span>
+    <span><span class="leg-dot" style="background:#E24B4A"></span>שכר</span>
+    <span><span class="leg-dot" style="background:#9B2020"></span>הלוואות</span>
+    <span><span class="leg-dot" style="background:#F4845F"></span>אשראי</span>
+    <span><span class="leg-dot" style="background:#C9A96E"></span>אחר</span>
+    <span><span class="leg-dot" style="background:#185FA5"></span>יתרה</span>
   </div>
   <div class="chart-wrap"><canvas id="mainChart" role="img" aria-label="תרשים תזרים חודשי"></canvas></div>
+  <div class="card" style="margin-top:1rem">
+    <div class="card-title"><i class="ti ti-building-bank" aria-hidden="true"></i> יתרות בנקים (נכון להיום)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:8px">
+      <div><div class="form-label">בינלאומי (₪)</div><input type="number" id="bankIntl" onchange="saveBank('בינלאומי',this.value)" placeholder="0"></div>
+      <div><div class="form-label">פועלים (₪)</div><input type="number" id="bankPoalim" onchange="saveBank('פועלים',this.value)" placeholder="0"></div>
+      <div><div class="form-label">לאומי (₪)</div><input type="number" id="bankLeumi" onchange="saveBank('לאומי',this.value)" placeholder="0"></div>
+    </div>
+    <div style="font-size:12px;color:#666">סה"כ נזילות: <strong id="bankTotalLabel" style="color:#1D9E75">₪0</strong></div>
+  </div>
   <div class="card" style="margin-top:1rem">
     <div class="card-title"><i class="ti ti-flame" aria-hidden="true"></i> Burn rate & ראנוויי</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
@@ -201,7 +214,7 @@ let BASE, KEY;
 
 const fmt=v=>'₪'+Math.round(Math.abs(v)).toLocaleString();
 const bankClass=b=>b==='בינלאומי'?'b-intl':b==='פועלים'?'b-poalim':'b-leumi';
-const state={loans:[],income:[],salary:[],cc:[],other:[]};
+const state={loans:[],income:[],salary:[],cc:[],other:[],banks:[]};
 let mainChart=null;
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2500);}
@@ -222,16 +235,17 @@ async function db(method,table,body,qry=''){
 
 async function loadAll(){
   try{
-    const [a,b,c,d,e]=await Promise.all([
+    const [a,b,c,d,e,f]=await Promise.all([
       db('GET','loans','','?order=id'),
       db('GET','income','','?order=id'),
       db('GET','salary','','?order=id'),
       db('GET','credit_cards','','?order=id'),
-      db('GET','other_expenses','','?order=id')
+      db('GET','other_expenses','','?order=id'),
+      db('GET','bank_balances','','?order=bank')
     ]);
     state.loans=(a||[]).map(l=>({...l,start:l.start_month,end:l.end_month,balloon:!!l.balloon}));
-    state.income=b||[];state.salary=c||[];state.cc=d||[];state.other=e||[];
-    renderLoans();renderIncome();renderSalary();renderCC();renderOther();updateAll();
+    state.income=b||[];state.salary=c||[];state.cc=d||[];state.other=e||[];state.banks=f||[];
+    renderLoans();renderIncome();renderSalary();renderCC();renderOther();renderBanks();updateAll();
   }catch(e){console.error(e);toast('שגיאת חיבור: '+e.message);}
 }
 
@@ -259,7 +273,7 @@ function showTab(name){
 
 function getMonths(){
   const now=new Date(),months=[];
-  for(let i=0;i<12;i++){const d=new Date(now.getFullYear(),now.getMonth()+i,1);months.push(d.toISOString().slice(0,7));}
+  for(let i=-1;i<13;i++){const d=new Date(now.getFullYear(),now.getMonth()+i,1);months.push(d.toISOString().slice(0,7));}
   [...state.income,...state.salary,...state.cc,...state.other].forEach(r=>{if(!months.includes(r.month))months.push(r.month);});
   return[...new Set(months)].sort();
 }
@@ -292,16 +306,25 @@ function updateAll(){
   document.getElementById('runwayMonths').textContent=rwy!==null?rwy+' חודשים':'∞';
   document.getElementById('runwayFill').style.width=(rwy!==null?Math.min(100,rwy/24*100):100)+'%';
   document.getElementById('runwayLabel').textContent=rwy!==null?`בקצב שריפה של ${fmt(avgBurn)} לחודש`:'הוסף הכנסות לחישוב ראנוויי';
+  const bankTotal=state.banks.reduce((s,b)=>s+b.balance,0);
+  const kbEl=document.getElementById('kpiBanks');kbEl.textContent=(bankTotal<0?'-':'')+fmt(bankTotal);kbEl.className='kpi-val '+(bankTotal>=0?'pos':'neg');
+  const btl=document.getElementById('bankTotalLabel');if(btl)btl.textContent=(bankTotal<0?'-':'')+fmt(bankTotal);
+  const balData=[];let runBal=bankTotal;
+  months.forEach(m=>{balData.push(runBal);runBal+=calcMonth(m).net;});
   if(mainChart)mainChart.destroy();
   const labels=months.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleString('he',{month:'short',year:'2-digit'});});
   mainChart=new Chart(document.getElementById('mainChart').getContext('2d'),{
     data:{labels,datasets:[
-      {type:'bar',label:'הכנסות',data:months.map(m=>calcMonth(m).inc),backgroundColor:'rgba(29,158,117,0.75)',borderColor:'#1D9E75',borderWidth:1},
-      {type:'bar',label:'הוצאות',data:months.map(m=>calcMonth(m).exp),backgroundColor:'rgba(226,75,74,0.75)',borderColor:'#E24B4A',borderWidth:1},
-      {type:'line',label:'נטו',data:months.map(m=>calcMonth(m).net),borderColor:'#185FA5',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:0.3}
+      {type:'bar',label:'שכר',data:months.map(m=>calcMonth(m).sal),backgroundColor:'rgba(226,75,74,0.85)',borderWidth:0,stack:'exp'},
+      {type:'bar',label:'הלוואות',data:months.map(m=>calcMonth(m).loans),backgroundColor:'rgba(155,32,32,0.85)',borderWidth:0,stack:'exp'},
+      {type:'bar',label:'אשראי',data:months.map(m=>calcMonth(m).cc),backgroundColor:'rgba(244,132,95,0.85)',borderWidth:0,stack:'exp'},
+      {type:'bar',label:'אחר',data:months.map(m=>calcMonth(m).oth),backgroundColor:'rgba(201,169,110,0.85)',borderWidth:0,stack:'exp'},
+      {type:'bar',label:'הכנסות',data:months.map(m=>calcMonth(m).inc),backgroundColor:'rgba(29,158,117,0.75)',borderWidth:0,stack:'inc'},
+      {type:'line',label:'יתרה',data:balData,borderColor:'#185FA5',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:0.3}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{ticks:{autoSkip:false,maxRotation:45,font:{size:11}}},y:{ticks:{callback:v=>'₪'+Math.round(v/1000)+'k'}}}}
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ₪${Math.round(Math.abs(ctx.raw)).toLocaleString()}`}}},
+      scales:{x:{stacked:true,ticks:{autoSkip:false,maxRotation:45,font:{size:11}}},y:{stacked:false,ticks:{callback:v=>'₪'+Math.round(v/1000)+'k'}}}}
   });
   const pl=document.getElementById('plTbody');
   pl.innerHTML=months.map(m=>{const c=calcMonth(m);const nc=c.net>=0?'color:#1D9E75':'color:#E24B4A';
@@ -427,7 +450,30 @@ async function removeOther(id){
     const cfg=await fetch('/api/config').then(r=>r.json());
     BASE=cfg.url;KEY=cfg.key;
   }catch(e){console.error('Config fetch failed',e);}
-  ['salMonth','ccMonth','incMonth','otherMonth'].forEach(buildMonthOptions);
+  function renderBanks(){
+  const map={בינלאומי:'Intl',פועלים:'Poalim',לאומי:'Leumi'};
+  Object.keys(map).forEach(bank=>{
+    const el=document.getElementById('bank'+map[bank]);
+    const found=state.banks.find(b=>b.bank===bank);
+    if(el&&found)el.value=found.balance;
+  });
+}
+async function saveBank(bank,val){
+  const balance=parseFloat(val)||0;
+  const existing=state.banks.find(b=>b.bank===bank);
+  try{
+    if(existing){
+      await db('PATCH','bank_balances',{balance,updated_at:new Date().toISOString()},`?bank=eq.${encodeURIComponent(bank)}`);
+      existing.balance=balance;
+    }else{
+      const row=await db('POST','bank_balances',{bank,balance});
+      state.banks.push(Array.isArray(row)?row[0]:row);
+    }
+    updateAll();toast('יתרה עודכנה ✓');
+  }catch(e){toast('שגיאה: '+e.message);}
+}
+
+['salMonth','ccMonth','incMonth','otherMonth'].forEach(buildMonthOptions);
   loadAll();
 })();
 </script>
