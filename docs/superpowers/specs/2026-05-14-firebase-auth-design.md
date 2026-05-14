@@ -57,7 +57,7 @@ No Firebase Admin SDK is needed. Firebase ID tokens are signed JWTs; the server 
 | Variable | Value |
 |---|---|
 | `FIREBASE_PROJECT_ID` | Firebase project ID (e.g. `cashflow-12345`) |
-| `ALLOWED_EMAILS` | `shmulik77@gmail.com,secondperson@gmail.com` |
+| `ALLOWED_EMAILS` | `shmulik.a@playscape.co.il,guy.y@playscape.co.il` |
 
 ### 4. Firebase Console setup (manual, one-time)
 
