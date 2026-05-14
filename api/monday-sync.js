@@ -81,9 +81,12 @@ module.exports = async (req, res) => {
       const payDate = addDays(dateStr, 60);
       const month = toYM(payDate);
 
+      const company = col['חברה']?.text || null;
+      const source = company ? `${company} (${item.name})` : item.name;
+
       toUpsert.push({
         monday_id: String(item.id),
-        source: item.name,
+        source,
         amount,
         month,
         prob: 100,
