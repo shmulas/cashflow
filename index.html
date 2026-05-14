@@ -182,7 +182,7 @@ button.danger:hover{background:#FCEBEB}
       <button onclick="syncMonday(this)" style="display:flex;align-items:center;gap:6px"><i class="ti ti-refresh" aria-hidden="true"></i> סנכרן Monday</button>
     </div>
     <table style="margin-top:1rem">
-      <thead><tr><th>מקור</th><th>חודש</th><th>סכום</th><th>%</th><th>משוקלל</th><th></th></tr></thead>
+      <thead><tr><th>סוג</th><th>מקור</th><th>חודש</th><th>סכום</th><th>%</th><th>משוקלל</th><th></th></tr></thead>
       <tbody id="incomeTbody"><tr><td colspan="6" class="empty">טוען...</td></tr></tbody>
     </table>
   </div>
@@ -416,9 +416,14 @@ async function removeLoan(id){
   state.loans=state.loans.filter(l=>l.id!==id);renderLoans();updateAll();toast('נמחק');
 }
 
+function typeBadge(type){
+  if(type==='collection') return '<span style="background:#FEF9C3;color:#854D0E;border-radius:4px;padding:1px 6px;font-size:10px">גביה</span>';
+  if(type==='expected')   return '<span style="background:#E0F2FE;color:#0369A1;border-radius:4px;padding:1px 6px;font-size:10px">צפי</span>';
+  return '<span style="background:#DCFCE7;color:#166534;border-radius:4px;padding:1px 6px;font-size:10px">חשבונית</span>';
+}
 function renderIncome(){
   const tb=document.getElementById('incomeTbody');
-  tb.innerHTML=state.income.length?state.income.map(i=>`<tr><td>${i.source}</td><td>${i.month}</td><td>${fmt(i.amount)}</td><td>${i.prob}%</td><td>${fmt(i.amount*i.prob/100)}</td><td><button class="danger" onclick="removeIncome(${i.id})"><i class="ti ti-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">אין הכנסות עדיין</td></tr>';
+  tb.innerHTML=state.income.length?state.income.map(i=>`<tr><td>${typeBadge(i.type)}</td><td>${i.source}</td><td>${i.month}</td><td>${fmt(i.amount)}</td><td>${i.prob}%</td><td>${fmt(i.amount*i.prob/100)}</td><td><button class="danger" onclick="removeIncome(${i.id})"><i class="ti ti-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="7" class="empty">אין הכנסות עדיין</td></tr>';
 }
 async function addIncome(){
   const source=document.getElementById('incSource').value.trim(),amount=parseFloat(document.getElementById('incAmount').value);
