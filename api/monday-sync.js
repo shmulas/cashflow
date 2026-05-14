@@ -60,18 +60,18 @@ module.exports = async (req, res) => {
       const col = {};
       item.column_values.forEach(c => { col[idToTitle[c.id]] = c; });
 
-      // Filter: only "not paid"
-      const status = (col['סטטוס']?.text || col['Status']?.text || '').toLowerCase();
+      // Filter: only "Not Paid" (Status column)
+      const status = (col['Status']?.text || '').toLowerCase();
       if (!status.includes('not paid')) continue;
 
-      // Amount: "תשלום כולל מעמ"
-      const amountRaw = col['תשלום כולל מעמ']?.text || '';
-      const amount = parseFloat(amountRaw.replace(/[^\d.]/g, ''));
-      if (!amount) continue;
+      // Amount: "סה"כ חשבונית" × 1.18 (formula column returns empty via API)
+      const baseAmount = parseFloat((col['סה"כ חשבונית']?.text || '').replace(/[^\d.]/g, ''));
+      if (!baseAmount) continue;
+      const amount = Math.round(baseAmount * 1.18);
 
-      // Date: "תאריך רישום חשבונית" + 60 days → month
+      // Date: "רישום חשבונית" + 60 days → month
       let dateStr = null;
-      const dateCol = col['תאריך רישום חשבונית'];
+      const dateCol = col['רישום חשבונית'];
       if (dateCol?.value) {
         try { dateStr = JSON.parse(dateCol.value).date; } catch {}
       }
@@ -90,22 +90,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    if (!toUpsert.length) {
-      // Debug: return column names + first item sample
-      const sample = items[0];
-      const sampleCols = sample ? sample.column_values.map(c => ({
-        id: c.id,
-        title: idToTitle[c.id],
-        text: c.text,
-      })) : [];
-      return res.json({
-        synced: 0,
-        message: 'אין פריטים — debug:',
-        all_columns: Object.entries(idToTitle).map(([id,title])=>({id,title})),
-        first_item_sample: sampleCols,
-        total_items: items.length,
-      });
-    }
+    if (!toUpsert.length) return res.json({ synced: 0, message: 'אין פריטים עם סטטוס Not Paid וסכום', total_items: items.length });
 
     // Upsert to Supabase (merge by monday_id)
     const sb = await fetch(`${process.env.SUPABASE_URL}/income`, {
