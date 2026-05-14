@@ -110,6 +110,8 @@ button.danger:hover{background:#FCEBEB}
 <div class="section active" id="tab-overview">
   <div class="legend">
     <span><span class="leg-dot" style="background:#1D9E75"></span>הכנסות</span>
+    <span><span class="leg-dot" style="background:#EAB308"></span>גביה</span>
+    <span><span class="leg-dot" style="background:#38BDF8"></span>צפי חשבוניות</span>
     <span><span class="leg-dot" style="background:#E24B4A"></span>שכר</span>
     <span><span class="leg-dot" style="background:#9B2020"></span>הלוואות</span>
     <span><span class="leg-dot" style="background:#F4845F"></span>אשראי</span>
@@ -364,7 +366,9 @@ function updateAll(){
       {type:'bar',label:'הלוואות',data:months.map(m=>calcMonth(m).loans),backgroundColor:'rgba(155,32,32,0.85)',borderWidth:0,stack:'exp'},
       {type:'bar',label:'אשראי',data:months.map(m=>calcMonth(m).cc),backgroundColor:'rgba(244,132,95,0.85)',borderWidth:0,stack:'exp'},
       {type:'bar',label:'אחר',data:months.map(m=>calcMonth(m).oth),backgroundColor:'rgba(201,169,110,0.85)',borderWidth:0,stack:'exp'},
-      {type:'bar',label:'הכנסות',data:months.map(m=>calcMonth(m).inc),backgroundColor:'rgba(29,158,117,0.75)',borderWidth:0,stack:'inc'},
+      {type:'bar',label:'הכנסות',      data:months.map(m=>calcMonth(m).inv),     backgroundColor:'rgba(29,158,117,0.75)', borderWidth:0,stack:'inc'},
+      {type:'bar',label:'גביה',         data:months.map(m=>calcMonth(m).coll),    backgroundColor:'rgba(234,179,8,0.75)',  borderWidth:0,stack:'inc'},
+      {type:'bar',label:'צפי חשבוניות',data:months.map(m=>calcMonth(m).forecast),backgroundColor:'rgba(56,189,248,0.75)', borderWidth:0,stack:'inc'},
       {type:'line',label:'יתרה',data:balData,borderColor:'#185FA5',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:0.3}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
