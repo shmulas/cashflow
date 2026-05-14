@@ -91,6 +91,7 @@ button.danger:hover{background:#FCEBEB}
 
 <div class="kpi-grid">
   <div class="kpi"><div class="kpi-label">הכנסות צפויות</div><div class="kpi-val pos" id="kpiIn">₪0</div></div>
+  <div class="kpi"><div class="kpi-label">צפי חשבוניות</div><div class="kpi-val" id="kpiForecast" style="color:#0EA5E9">₪0</div></div>
   <div class="kpi"><div class="kpi-label">צפי גביה</div><div class="kpi-val" id="kpiColl" style="color:#D97706">₪0</div></div>
   <div class="kpi"><div class="kpi-label">סה"כ הוצאות</div><div class="kpi-val neg" id="kpiOut">₪0</div></div>
   <div class="kpi"><div class="kpi-label">תזרים נטו</div><div class="kpi-val neu" id="kpiNet">₪0</div></div>
@@ -348,12 +349,12 @@ function calcMonth(m){
 }
 
 function updateAll(){
-  const months=getMonths();let tInc=0,tExp=0;
-  months.forEach(m=>{const c=calcMonth(m);tInc+=c.inc;tExp+=c.exp;});
+  const months=getMonths();let tInc=0,tInv=0,tColl=0,tForecast=0,tExp=0;
+  months.forEach(m=>{const c=calcMonth(m);tInc+=c.inc;tInv+=c.inv;tColl+=c.coll;tForecast+=c.forecast;tExp+=c.exp;});
   const net=tInc-tExp;
-  const curM=localYM(new Date());const cur=calcMonth(curM);
-  document.getElementById('kpiIn').textContent=fmt(tInc);
-  document.getElementById('kpiColl').textContent=fmt(cur.coll);
+  document.getElementById('kpiIn').textContent=fmt(tInv);
+  document.getElementById('kpiForecast').textContent=fmt(tForecast);
+  document.getElementById('kpiColl').textContent=fmt(tColl);
   document.getElementById('kpiOut').textContent=fmt(tExp);
   const ne=document.getElementById('kpiNet');ne.textContent=(net<0?'-':'')+fmt(net);ne.className='kpi-val '+(net>=0?'pos':'neg');
   document.getElementById('kpiDebt').textContent=fmt(state.loans.reduce((s,l)=>s+l.balance,0));
