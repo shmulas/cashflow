@@ -6,6 +6,8 @@
 <title>Cash Flow Dashboard</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;font-size:14px;color:#1a1a1a;background:#f8f8f6;direction:rtl}
@@ -45,11 +47,30 @@ button.danger:hover{background:#FCEBEB}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#666;margin-bottom:8px}
 .leg-dot{width:10px;height:10px;border-radius:2px;display:inline-block;margin-left:4px;vertical-align:middle}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;display:none;z-index:999}
+#loginScreen{position:fixed;inset:0;background:#f8f8f6;display:flex;align-items:center;justify-content:center;z-index:1000}
+#loginScreen.hidden{display:none}
+.login-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:12px;padding:2rem 2.5rem;width:300px;text-align:center}
+.login-card h2{font-size:16px;font-weight:500;margin-bottom:6px}
+.login-card .sub{font-size:12px;color:#666;margin-bottom:1.5rem}
+#loginError{color:#E24B4A;font-size:12px;margin-top:10px;min-height:16px}
+.header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem}
+.header-row h1{margin-bottom:0}
 </style>
 </head>
 <body>
+<div id="loginScreen">
+  <div class="login-card">
+    <h2>דשבורד תזרים מזומנים</h2>
+    <p class="sub">כניסה לאנשים מורשים בלבד</p>
+    <button id="loginBtn" class="primary" onclick="signIn()"><i class="ti ti-brand-google"></i> התחבר עם Google</button>
+    <div id="loginError"></div>
+  </div>
+</div>
 <div class="container">
-<h1><i class="ti ti-chart-bar" aria-hidden="true"></i> דשבורד תזרים מזומנים</h1>
+<div class="header-row">
+  <h1><i class="ti ti-chart-bar" aria-hidden="true"></i> דשבורד תזרים מזומנים</h1>
+  <button onclick="signOut()" style="font-size:12px"><i class="ti ti-logout"></i> יציאה</button>
+</div>
 
 <div class="kpi-grid">
   <div class="kpi"><div class="kpi-label">הכנסות צפויות</div><div class="kpi-val pos" id="kpiIn">₪0</div></div>
@@ -484,14 +505,55 @@ async function saveBank(bank,val){
   }catch(e){toast('שגיאה: '+e.message);}
 }
 
-(async()=>{
-  try{
-    const cfg=await fetch('/api/config').then(r=>r.json());
-    BASE=cfg.url;KEY=cfg.key;
-  }catch(e){console.error('Config fetch failed',e);}
-  ['salMonth','ccMonth','incMonth','otherMonth'].forEach(buildMonthOptions);
-  loadAll();
-})();
+firebase.initializeApp({
+  apiKey: "AIzaSyBShsmqDu92FEsydaH3_ClSTf8PDKXXZow",
+  authDomain: "cash-flow-9f811.firebaseapp.com",
+  projectId: "cash-flow-9f811",
+});
+const _auth = firebase.auth();
+
+function signIn() {
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.textContent = 'מתחבר...';
+  _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+    .catch(() => {
+      document.getElementById('loginError').textContent = 'שגיאה בהתחברות, נסה שוב';
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-brand-google"></i> התחבר עם Google';
+    });
+}
+
+async function signOut() {
+  await _auth.signOut();
+}
+
+_auth.onAuthStateChanged(async (user) => {
+  if (!user) {
+    document.getElementById('loginScreen').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('loginError').textContent = '';
+  try {
+    const token = await user.getIdToken();
+    const r = await fetch('/api/config', { headers: { Authorization: `Bearer ${token}` } });
+    if (r.status === 403) {
+      document.getElementById('loginError').textContent = 'אין לך גישה לדשבורד זה';
+      await _auth.signOut();
+      return;
+    }
+    if (!r.ok) throw new Error('config fetch failed');
+    const cfg = await r.json();
+    BASE = cfg.url;
+    KEY = cfg.key;
+    document.getElementById('loginScreen').classList.add('hidden');
+    ['salMonth','ccMonth','incMonth','otherMonth'].forEach(buildMonthOptions);
+    loadAll();
+  } catch(e) {
+    document.getElementById('loginError').textContent = 'שגיאת חיבור, נסה שוב';
+    await _auth.signOut();
+  }
+});
 </script>
 </body>
 </html>
