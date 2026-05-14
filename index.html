@@ -323,13 +323,16 @@ function getMonths(){
 function loanPmt(l,m){if(l.balloon)return m===l.end?l.payment:0;return(m>=l.start&&m<=l.end)?l.payment:0;}
 
 function calcMonth(m){
-  const inc=state.income.filter(i=>i.month===m).reduce((s,i)=>s+i.amount*(i.prob/100),0);
+  const inv=state.income.filter(i=>i.month===m&&(!i.type||i.type==='invoice')).reduce((s,i)=>s+i.amount*(i.prob/100),0);
+  const coll=state.income.filter(i=>i.month===m&&i.type==='collection').reduce((s,i)=>s+i.amount*(i.prob/100),0);
+  const forecast=state.income.filter(i=>i.month===m&&i.type==='expected').reduce((s,i)=>s+i.amount*(i.prob/100),0);
+  const inc=inv+coll+forecast;
   const loans=state.loans.reduce((s,l)=>s+loanPmt(l,m),0);
   const sal=state.salary.filter(s=>s.month===m).reduce((s,i)=>s+i.amount,0);
   const cc=state.cc.filter(c=>c.month===m).reduce((s,i)=>s+i.amount,0);
   const oth=state.other.filter(o=>o.month===m).reduce((s,i)=>s+i.amount,0);
   const exp=loans+sal+cc+oth;
-  return{inc,loans,sal,cc,oth,exp,net:inc-exp};
+  return{inv,coll,forecast,inc,loans,sal,cc,oth,exp,net:inc-exp};
 }
 
 function updateAll(){
