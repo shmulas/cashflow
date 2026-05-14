@@ -40,6 +40,9 @@ async function runSync() {
             id
             text
             value
+            ... on MirrorValue {
+              display_value
+            }
           }
         }
       }
@@ -76,7 +79,7 @@ async function runSync() {
     if (!dateStr) continue;
 
     const month = toYM(addDays(dateStr, 60));
-    const company = col['חברה']?.text || null;
+    const company = col['חברה']?.display_value || col['חברה']?.text || null;
     const source = company ? `${company} (${item.name})` : item.name;
 
     toInsert.push({ monday_id: String(item.id), source, amount, month, prob: 100 });
