@@ -137,7 +137,10 @@ button.danger:hover{background:#FCEBEB}
       <div><div class="form-label">חודש</div><select id="incMonth"></select></div>
       <div><div class="form-label">הסתברות %</div><input type="number" id="incProb" placeholder="100"></div>
     </div>
-    <button class="primary" onclick="addIncome()"><i class="ti ti-plus" aria-hidden="true"></i> הוסף</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="primary" onclick="addIncome()"><i class="ti ti-plus" aria-hidden="true"></i> הוסף ידנית</button>
+      <button onclick="syncMonday(this)" style="display:flex;align-items:center;gap:6px"><i class="ti ti-refresh" aria-hidden="true"></i> סנכרן Monday</button>
+    </div>
     <table style="margin-top:1rem">
       <thead><tr><th>מקור</th><th>חודש</th><th>סכום</th><th>%</th><th>משוקלל</th><th></th></tr></thead>
       <tbody id="incomeTbody"><tr><td colspan="6" class="empty">טוען...</td></tr></tbody>
@@ -444,6 +447,18 @@ async function addOther(){
 async function removeOther(id){
   await db('DELETE','other_expenses',null,`?id=eq.${id}`);
   state.other=state.other.filter(o=>o.id!==id);renderOther();updateAll();toast('נמחק');
+}
+
+async function syncMonday(btn){
+  const orig=btn.innerHTML;btn.innerHTML='<i class="ti ti-loader-2"></i> מסנכרן...';btn.disabled=true;
+  try{
+    const r=await fetch('/api/monday-sync',{method:'POST'});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data.error||'שגיאה');
+    await loadAll();
+    toast(`✓ סונכרנו ${data.synced} הכנסות מ-Monday`);
+  }catch(e){toast('שגיאה: '+e.message);}
+  finally{btn.innerHTML=orig;btn.disabled=false;}
 }
 
 function renderBanks(){
