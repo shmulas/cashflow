@@ -91,7 +91,7 @@ button.danger:hover{background:#FCEBEB}
 
 <div class="kpi-grid">
   <div class="kpi"><div class="kpi-label">הכנסות צפויות</div><div class="kpi-val pos" id="kpiIn">₪0</div></div>
-  <div class="kpi"><div class="kpi-label">צפי גביה</div><div class="kpi-val" id="kpiColl" style="color:#EAB308">₪0</div></div>
+  <div class="kpi"><div class="kpi-label">צפי גביה</div><div class="kpi-val" id="kpiColl" style="color:#D97706">₪0</div></div>
   <div class="kpi"><div class="kpi-label">סה"כ הוצאות</div><div class="kpi-val neg" id="kpiOut">₪0</div></div>
   <div class="kpi"><div class="kpi-label">תזרים נטו</div><div class="kpi-val neu" id="kpiNet">₪0</div></div>
   <div class="kpi"><div class="kpi-label">יתרת בנקים</div><div class="kpi-val pos" id="kpiBanks">₪0</div></div>
@@ -111,7 +111,7 @@ button.danger:hover{background:#FCEBEB}
 <div class="section active" id="tab-overview">
   <div class="legend">
     <span><span class="leg-dot" style="background:#1D9E75"></span>הכנסות</span>
-    <span><span class="leg-dot" style="background:#EAB308"></span>גביה</span>
+    <span><span class="leg-dot" style="background:#FACC15"></span>גביה</span>
     <span><span class="leg-dot" style="background:#38BDF8"></span>צפי חשבוניות</span>
     <span><span class="leg-dot" style="background:#E24B4A"></span>שכר</span>
     <span><span class="leg-dot" style="background:#9B2020"></span>הלוואות</span>
@@ -348,11 +348,12 @@ function calcMonth(m){
 }
 
 function updateAll(){
-  const months=getMonths();let tInc=0,tExp=0,tColl=0;
-  months.forEach(m=>{const c=calcMonth(m);tInc+=c.inc;tExp+=c.exp;tColl+=c.coll;});
+  const months=getMonths();let tInc=0,tExp=0;
+  months.forEach(m=>{const c=calcMonth(m);tInc+=c.inc;tExp+=c.exp;});
   const net=tInc-tExp;
-  document.getElementById('kpiIn').textContent=fmt(tInc);
-  document.getElementById('kpiColl').textContent=fmt(tColl);
+  const curM=localYM(new Date());const cur=calcMonth(curM);
+  document.getElementById('kpiIn').textContent=fmt(cur.inc);
+  document.getElementById('kpiColl').textContent=fmt(cur.coll);
   document.getElementById('kpiOut').textContent=fmt(tExp);
   const ne=document.getElementById('kpiNet');ne.textContent=(net<0?'-':'')+fmt(net);ne.className='kpi-val '+(net>=0?'pos':'neg');
   document.getElementById('kpiDebt').textContent=fmt(state.loans.reduce((s,l)=>s+l.balance,0));
@@ -378,7 +379,7 @@ function updateAll(){
       {type:'bar',label:'אשראי',data:months.map(m=>calcMonth(m).cc),backgroundColor:'rgba(244,132,95,0.85)',borderWidth:0,stack:'exp'},
       {type:'bar',label:'אחר',data:months.map(m=>calcMonth(m).oth),backgroundColor:'rgba(201,169,110,0.85)',borderWidth:0,stack:'exp'},
       {type:'bar',label:'הכנסות',      data:months.map(m=>calcMonth(m).inv),     backgroundColor:'rgba(29,158,117,0.75)', borderWidth:0,stack:'inc'},
-      {type:'bar',label:'גביה',         data:months.map(m=>calcMonth(m).coll),    backgroundColor:'rgba(234,179,8,0.75)',  borderWidth:0,stack:'inc'},
+      {type:'bar',label:'גביה',         data:months.map(m=>calcMonth(m).coll),    backgroundColor:'rgba(250,204,21,0.9)',  borderWidth:0,stack:'inc'},
       {type:'bar',label:'צפי חשבוניות',data:months.map(m=>calcMonth(m).forecast),backgroundColor:'rgba(56,189,248,0.75)', borderWidth:0,stack:'inc'},
       {type:'line',label:'יתרה',data:balData,borderColor:'#185FA5',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:0.3}
     ]},
