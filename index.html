@@ -186,6 +186,15 @@ button.danger:hover{background:#FCEBEB}
       <tbody id="incomeTbody"><tr><td colspan="6" class="empty">טוען...</td></tr></tbody>
     </table>
   </div>
+  <div class="card">
+    <div class="card-title"><i class="ti ti-clock-dollar" aria-hidden="true"></i> צפי חשבוניות</div>
+    <div class="form-grid">
+      <div><div class="form-label">מקור / לקוח</div><input type="text" id="forecastSource"></div>
+      <div><div class="form-label">סכום (₪)</div><input type="number" id="forecastAmount"></div>
+      <div><div class="form-label">חודש</div><select id="forecastMonth"></select></div>
+    </div>
+    <button class="primary" onclick="addForecast()"><i class="ti ti-plus" aria-hidden="true"></i> הוסף צפי</button>
+  </div>
 </div>
 
 <!-- EXPENSES -->
@@ -436,6 +445,19 @@ async function addIncome(){
     document.getElementById('incSource').value='';document.getElementById('incAmount').value='';document.getElementById('incProb').value='';
   }catch(e){alert('שגיאה: '+e.message);}
 }
+async function addForecast(){
+  const source=document.getElementById('forecastSource').value.trim();
+  const amount=parseFloat(document.getElementById('forecastAmount').value);
+  const month=document.getElementById('forecastMonth').value;
+  if(!source||!amount||!month)return alert('מלא שדות חובה');
+  try{
+    const row=await db('POST','income',{source,amount,month,prob:100,type:'expected'});
+    state.income.push(Array.isArray(row)?row[0]:row);
+    renderIncome();updateAll();toast('צפי נוסף');
+    document.getElementById('forecastSource').value='';
+    document.getElementById('forecastAmount').value='';
+  }catch(e){alert('שגיאה: '+e.message);}
+}
 async function removeIncome(id){
   await db('DELETE','income',null,`?id=eq.${id}`);
   state.income=state.income.filter(i=>i.id!==id);renderIncome();updateAll();toast('נמחק');
@@ -576,7 +598,7 @@ _auth.onAuthStateChanged(async (user) => {
     BASE = cfg.url;
     KEY = cfg.key;
     document.getElementById('loginScreen').classList.add('hidden');
-    ['salMonth','ccMonth','incMonth','otherMonth'].forEach(buildMonthOptions);
+    ['salMonth','ccMonth','incMonth','otherMonth','forecastMonth'].forEach(buildMonthOptions);
     loadAll();
   } catch(e) {
     document.getElementById('loginError').textContent = 'שגיאת חיבור, נסה שוב';
