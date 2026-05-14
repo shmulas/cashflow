@@ -33,12 +33,13 @@ module.exports = async (req, res) => {
   try {
     const data = await gql(`{
       boards(ids: [${BOARD_ID}]) {
+        columns { id title }
         items_page(limit: 500) {
           items {
             id
             name
             column_values {
-              title
+              id
               text
               value
             }
@@ -47,12 +48,17 @@ module.exports = async (req, res) => {
       }
     }`);
 
-    const items = data.boards[0].items_page.items;
+    const board = data.boards[0];
+    // Build id→title map from board columns
+    const idToTitle = {};
+    board.columns.forEach(c => { idToTitle[c.id] = c.title; });
+
+    const items = board.items_page.items;
     const toUpsert = [];
 
     for (const item of items) {
       const col = {};
-      item.column_values.forEach(c => { col[c.title] = c; });
+      item.column_values.forEach(c => { col[idToTitle[c.id]] = c; });
 
       // Filter: only "not paid"
       const status = (col['סטטוס']?.text || col['Status']?.text || '').toLowerCase();
