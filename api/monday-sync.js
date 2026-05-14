@@ -1,4 +1,6 @@
 const BOARD_ID = 3416125388;
+const SUPABASE_URL = () => process.env.SUPABASE_URL;
+const SUPABASE_KEY = () => process.env.SUPABASE_ANON_KEY;
 
 async function gql(query) {
   const r = await fetch('https://api.monday.com/v2', {
@@ -26,90 +28,94 @@ function toYM(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  try {
-    const data = await gql(`{
-      boards(ids: [${BOARD_ID}]) {
-        columns { id title }
-        items_page(limit: 500) {
-          items {
+async function runSync() {
+  const data = await gql(`{
+    boards(ids: [${BOARD_ID}]) {
+      columns { id title }
+      items_page(limit: 500) {
+        items {
+          id
+          name
+          column_values {
             id
-            name
-            column_values {
-              id
-              text
-              value
-            }
+            text
+            value
           }
         }
       }
-    }`);
-
-    const board = data.boards[0];
-    // Build id→title map from board columns
-    const idToTitle = {};
-    board.columns.forEach(c => { idToTitle[c.id] = c.title; });
-
-    const items = board.items_page.items;
-    const toUpsert = [];
-
-    for (const item of items) {
-      const col = {};
-      item.column_values.forEach(c => { col[idToTitle[c.id]] = c; });
-
-      // Filter: only "Not Paid" (Status column)
-      const status = (col['Status']?.text || '').toLowerCase();
-      if (!status.includes('not paid')) continue;
-
-      // Amount: "סה"כ חשבונית" × 1.18 (formula column returns empty via API)
-      const baseAmount = parseFloat((col['סה"כ חשבונית']?.text || '').replace(/[^\d.]/g, ''));
-      if (!baseAmount) continue;
-      const amount = Math.round(baseAmount * 1.18);
-
-      // Date: "רישום חשבונית" + 60 days → month
-      let dateStr = null;
-      const dateCol = col['רישום חשבונית'];
-      if (dateCol?.value) {
-        try { dateStr = JSON.parse(dateCol.value).date; } catch {}
-      }
-      if (!dateStr && dateCol?.text) dateStr = dateCol.text;
-      if (!dateStr) continue;
-
-      const payDate = addDays(dateStr, 60);
-      const month = toYM(payDate);
-
-      const company = col['חברה']?.text || null;
-      const source = company ? `${company} (${item.name})` : item.name;
-
-      toUpsert.push({
-        monday_id: String(item.id),
-        source,
-        amount,
-        month,
-        prob: 100,
-      });
     }
+  }`);
 
-    if (!toUpsert.length) return res.json({ synced: 0, message: 'אין פריטים עם סטטוס Not Paid וסכום', total_items: items.length });
+  const board = data.boards[0];
+  const idToTitle = {};
+  board.columns.forEach(c => { idToTitle[c.id] = c.title; });
 
-    // Upsert to Supabase (merge by monday_id)
-    const sb = await fetch(`${process.env.SUPABASE_URL}/income`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: process.env.SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-        Prefer: 'resolution=merge-duplicates,return=representation',
-      },
-      body: JSON.stringify(toUpsert),
-    });
+  const items = board.items_page.items;
+  const toInsert = [];
 
-    if (!sb.ok) throw new Error(await sb.text());
-    const rows = await sb.json();
-    res.json({ synced: rows.length, items: rows.map(r => ({ source: r.source, amount: r.amount, month: r.month })) });
+  for (const item of items) {
+    const col = {};
+    item.column_values.forEach(c => { col[idToTitle[c.id]] = c; });
+
+    // Filter: only "Not Paid"
+    const status = (col['Status']?.text || '').toLowerCase();
+    if (!status.includes('not paid')) continue;
+
+    // Amount: "סה"כ חשבונית" × 1.18
+    const baseAmount = parseFloat((col['סה"כ חשבונית']?.text || '').replace(/[^\d.]/g, ''));
+    if (!baseAmount) continue;
+    const amount = Math.round(baseAmount * 1.18);
+
+    // Date: "רישום חשבונית" + 60 days → month
+    let dateStr = null;
+    const dateCol = col['רישום חשבונית'];
+    if (dateCol?.value) {
+      try { dateStr = JSON.parse(dateCol.value).date; } catch {}
+    }
+    if (!dateStr && dateCol?.text) dateStr = dateCol.text;
+    if (!dateStr) continue;
+
+    const month = toYM(addDays(dateStr, 60));
+    const company = col['חברה']?.text || null;
+    const source = company ? `${company} (${item.name})` : item.name;
+
+    toInsert.push({ monday_id: String(item.id), source, amount, month, prob: 100 });
+  }
+
+  // Step 1: delete all existing Monday rows
+  const del = await fetch(`${SUPABASE_URL()}/income?monday_id=not.is.null`, {
+    method: 'DELETE',
+    headers: {
+      apikey: SUPABASE_KEY(),
+      Authorization: `Bearer ${SUPABASE_KEY()}`,
+    },
+  });
+  if (!del.ok) throw new Error(`Delete failed: ${await del.text()}`);
+
+  if (!toInsert.length) return { synced: 0, message: 'אין פריטים עם סטטוס Not Paid וסכום', total_items: items.length };
+
+  // Step 2: insert fresh rows
+  const ins = await fetch(`${SUPABASE_URL()}/income`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_KEY(),
+      Authorization: `Bearer ${SUPABASE_KEY()}`,
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(toInsert),
+  });
+  if (!ins.ok) throw new Error(await ins.text());
+  const rows = await ins.json();
+  return { synced: rows.length, items: rows.map(r => ({ source: r.source, amount: r.amount, month: r.month })) };
+}
+
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  try {
+    const result = await runSync();
+    res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
