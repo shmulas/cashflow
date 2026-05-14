@@ -56,17 +56,18 @@ async function runSync() {
   const items = board.items_page.items;
   const toInsert = [];
 
+  const skipped = [];
   for (const item of items) {
     const col = {};
     item.column_values.forEach(c => { col[idToTitle[c.id]] = c; });
 
     // Filter: only "Not Paid"
     const status = (col['Status']?.text || '').toLowerCase();
-    if (!status.includes('not paid')) continue;
+    if (!status.includes('not paid')) { skipped.push({ name: item.name, reason: 'status: ' + (col['Status']?.text || 'empty') }); continue; }
 
     // Amount: "סה"כ חשבונית" × 1.18
     const baseAmount = parseFloat((col['סה"כ חשבונית']?.text || '').replace(/[^\d.]/g, ''));
-    if (!baseAmount) continue;
+    if (!baseAmount) { skipped.push({ name: item.name, reason: 'no amount' }); continue; }
     const amount = Math.round(baseAmount * 1.18);
 
     // Date: "רישום חשבונית" + 60 days → month
@@ -76,7 +77,7 @@ async function runSync() {
       try { dateStr = JSON.parse(dateCol.value).date; } catch {}
     }
     if (!dateStr && dateCol?.text) dateStr = dateCol.text;
-    if (!dateStr) continue;
+    if (!dateStr) { skipped.push({ name: item.name, reason: 'no date', amount }); continue; }
 
     const nowYM = toYM(new Date());
     const calculated = toYM(addDays(dateStr, 60));
@@ -98,7 +99,7 @@ async function runSync() {
   });
   if (!del.ok) throw new Error(`Delete failed: ${await del.text()}`);
 
-  if (!toInsert.length) return { synced: 0, message: 'אין פריטים עם סטטוס Not Paid וסכום', total_items: items.length };
+  if (!toInsert.length) return { synced: 0, message: 'אין פריטים עם סטטוס Not Paid וסכום', total_items: items.length, skipped };
 
   // Step 2: insert fresh rows
   const ins = await fetch(`${SUPABASE_URL()}/income`, {
@@ -113,7 +114,7 @@ async function runSync() {
   });
   if (!ins.ok) throw new Error(await ins.text());
   const rows = await ins.json();
-  return { synced: rows.length, items: rows.map(r => ({ source: r.source, amount: r.amount, month: r.month })) };
+  return { synced: rows.length, skipped, items: rows.map(r => ({ source: r.source, amount: r.amount, month: r.month, type: r.type })) };
 }
 
 module.exports = async (req, res) => {
