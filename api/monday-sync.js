@@ -78,11 +78,14 @@ async function runSync() {
     if (!dateStr && dateCol?.text) dateStr = dateCol.text;
     if (!dateStr) continue;
 
-    const month = toYM(addDays(dateStr, 60));
+    const nowYM = toYM(new Date());
+    const calculated = toYM(addDays(dateStr, 60));
+    const type = calculated < nowYM ? 'collection' : 'invoice';
+    const month = calculated < nowYM ? nowYM : calculated;
     const company = col['חברה']?.display_value || col['חברה']?.text || null;
     const source = company ? `${company} (${item.name})` : item.name;
 
-    toInsert.push({ monday_id: String(item.id), source, amount, month, prob: 100 });
+    toInsert.push({ monday_id: String(item.id), source, amount, month, prob: 100, type });
   }
 
   // Step 1: delete all existing Monday rows
