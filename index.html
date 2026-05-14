@@ -384,7 +384,16 @@ function updateAll(){
       {type:'line',label:'יתרה',data:balData,borderColor:'#185FA5',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:0.3}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ₪${Math.round(Math.abs(ctx.raw)).toLocaleString()}`}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        label:ctx=>`${ctx.dataset.label}: ₪${Math.round(Math.abs(ctx.raw)).toLocaleString()}`,
+        footer:items=>{
+          const incLabels=['הכנסות','גביה','צפי חשבוניות'];
+          const incItems=items.filter(i=>incLabels.includes(i.dataset.label));
+          if(!incItems.length)return[];
+          const tot=incItems.reduce((s,i)=>s+Math.abs(i.raw),0);
+          return[`סה"כ הכנסות: ₪${Math.round(tot).toLocaleString()}`];
+        }
+      }}},
       scales:{x:{stacked:true,ticks:{autoSkip:false,maxRotation:45,font:{size:11}}},y:{stacked:true,ticks:{callback:v=>'₪'+Math.round(v/1000)+'k'}}}}
   });
   const pl=document.getElementById('plTbody');
