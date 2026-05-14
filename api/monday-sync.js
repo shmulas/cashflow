@@ -90,7 +90,22 @@ module.exports = async (req, res) => {
       });
     }
 
-    if (!toUpsert.length) return res.json({ synced: 0, message: 'אין פריטים עם סטטוס not paid' });
+    if (!toUpsert.length) {
+      // Debug: return column names + first item sample
+      const sample = items[0];
+      const sampleCols = sample ? sample.column_values.map(c => ({
+        id: c.id,
+        title: idToTitle[c.id],
+        text: c.text,
+      })) : [];
+      return res.json({
+        synced: 0,
+        message: 'אין פריטים — debug:',
+        all_columns: Object.entries(idToTitle).map(([id,title])=>({id,title})),
+        first_item_sample: sampleCols,
+        total_items: items.length,
+      });
+    }
 
     // Upsert to Supabase (merge by monday_id)
     const sb = await fetch(`${process.env.SUPABASE_URL}/income`, {
