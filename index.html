@@ -47,23 +47,40 @@ button.danger:hover{background:#FCEBEB}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#666;margin-bottom:8px}
 .leg-dot{width:10px;height:10px;border-radius:2px;display:inline-block;margin-left:4px;vertical-align:middle}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;display:none;z-index:999}
-#loginScreen{position:fixed;inset:0;background:#f8f8f6;display:flex;align-items:center;justify-content:center;z-index:1000}
+#loginScreen{position:fixed;inset:0;display:flex;z-index:1000}
 #loginScreen.hidden{display:none}
-.login-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:12px;padding:2rem 2.5rem;width:300px;text-align:center}
-.login-card h2{font-size:16px;font-weight:500;margin-bottom:6px}
-.login-card .sub{font-size:12px;color:#666;margin-bottom:1.5rem}
-#loginError{color:#E24B4A;font-size:12px;margin-top:10px;min-height:16px}
+.login-left{flex:1;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 40%,#0f3460 70%,#533483 100%);position:relative;overflow:hidden}
+.login-left::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 30% 50%,rgba(83,52,131,.6) 0%,transparent 60%),radial-gradient(circle at 80% 20%,rgba(29,158,117,.3) 0%,transparent 50%);animation:pulse 6s ease-in-out infinite alternate}
+.login-left::after{content:'תזרים מזומנים';position:absolute;bottom:2.5rem;right:2.5rem;color:rgba(255,255,255,.15);font-size:56px;font-weight:700;line-height:1;letter-spacing:-2px}
+@keyframes pulse{from{opacity:.7}to{opacity:1}}
+.login-right{width:420px;background:#fff;display:flex;align-items:center;justify-content:center;padding:3rem}
+.login-box{width:100%;max-width:320px;text-align:center}
+.login-logo{width:48px;height:48px;background:#1a1a1a;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;color:#fff;font-size:22px}
+.login-box h2{font-size:22px;font-weight:600;margin-bottom:8px;color:#1a1a1a}
+.login-box .sub{font-size:13px;color:#888;margin-bottom:2rem;line-height:1.5}
+.btn-google{width:100%;padding:11px 16px;border:1.5px solid #e0e0e0;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;color:#1a1a1a;display:flex;align-items:center;justify-content:center;gap:10px;transition:border-color .15s,box-shadow .15s}
+.btn-google:hover{border-color:#aaa;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.btn-google svg{flex-shrink:0}
+#loginError{color:#E24B4A;font-size:12px;margin-top:14px;min-height:16px}
+@media(max-width:640px){.login-left{display:none}.login-right{width:100%}}
 .header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem}
 .header-row h1{margin-bottom:0}
 </style>
 </head>
 <body>
 <div id="loginScreen">
-  <div class="login-card">
-    <h2>דשבורד תזרים מזומנים</h2>
-    <p class="sub">כניסה לאנשים מורשים בלבד</p>
-    <button id="loginBtn" class="primary" onclick="signIn()"><i class="ti ti-brand-google"></i> התחבר עם Google</button>
-    <div id="loginError"></div>
+  <div class="login-left"></div>
+  <div class="login-right">
+    <div class="login-box">
+      <div class="login-logo"><i class="ti ti-chart-bar"></i></div>
+      <h2>ברוך הבא</h2>
+      <p class="sub">דשבורד תזרים מזומנים<br>כניסה לאנשים מורשים בלבד</p>
+      <button id="loginBtn" class="btn-google" onclick="signIn()">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>
+        המשך עם Google
+      </button>
+      <div id="loginError"></div>
+    </div>
   </div>
 </div>
 <div class="container">
