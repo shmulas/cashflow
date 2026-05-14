@@ -352,7 +352,7 @@ function updateAll(){
   months.forEach(m=>{const c=calcMonth(m);tInc+=c.inc;tExp+=c.exp;});
   const net=tInc-tExp;
   const curM=localYM(new Date());const cur=calcMonth(curM);
-  document.getElementById('kpiIn').textContent=fmt(cur.inc);
+  document.getElementById('kpiIn').textContent=fmt(tInc);
   document.getElementById('kpiColl').textContent=fmt(cur.coll);
   document.getElementById('kpiOut').textContent=fmt(tExp);
   const ne=document.getElementById('kpiNet');ne.textContent=(net<0?'-':'')+fmt(net);ne.className='kpi-val '+(net>=0?'pos':'neg');
