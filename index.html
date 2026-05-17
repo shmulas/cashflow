@@ -199,7 +199,7 @@ button.danger:hover{background:#FCEBEB}
       <button onclick="syncMonday(this)" style="display:flex;align-items:center;gap:6px"><i class="ti ti-refresh" aria-hidden="true"></i> סנכרן Monday</button>
     </div>
     <table style="margin-top:1rem">
-      <thead><tr><th>סוג</th><th>מקור</th><th>חודש</th><th>סכום</th><th>%</th><th>משוקלל</th><th></th></tr></thead>
+      <thead><tr><th>סוג</th><th>מקור</th><th>תאריך</th><th>סכום</th><th>%</th><th>משוקלל</th><th></th></tr></thead>
       <tbody id="incomeTbody"><tr><td colspan="6" class="empty">טוען...</td></tr></tbody>
     </table>
   </div>
@@ -447,7 +447,6 @@ function buildLedger(m,openingBal){
 }
 
 function openMonthPanel(m,openingBal){
-  console.log('income sample for',m,state.income.filter(i=>i.month===m).slice(0,3).map(i=>({source:i.source,date:i.date,month:i.month})));
   const [y,mo]=m.split('-');
   const title=new Date(+y,+mo-1).toLocaleString('he',{month:'long',year:'numeric'});
   document.getElementById('monthPanelTitle').textContent=title;
@@ -555,7 +554,7 @@ function typeBadge(type){
 }
 function renderIncome(){
   const tb=document.getElementById('incomeTbody');
-  tb.innerHTML=state.income.length?state.income.map(i=>`<tr><td>${typeBadge(i.type)}</td><td>${i.source}</td><td>${i.month}</td><td>${fmt(i.amount)}</td><td>${i.prob}%</td><td>${fmt(i.amount*i.prob/100)}</td><td><button class="danger" onclick="removeIncome(${i.id})"><i class="ti ti-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="7" class="empty">אין הכנסות עדיין</td></tr>';
+  tb.innerHTML=state.income.length?state.income.map(i=>`<tr><td>${typeBadge(i.type)}</td><td>${i.source}</td><td>${i.date?fmtDate(i.date):i.month}</td><td>${fmt(i.amount)}</td><td>${i.prob}%</td><td>${fmt(i.amount*i.prob/100)}</td><td><button class="danger" onclick="removeIncome(${i.id})"><i class="ti ti-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="7" class="empty">אין הכנסות עדיין</td></tr>';
 }
 async function addIncome(){
   const source=document.getElementById('incSource').value.trim(),amount=parseFloat(document.getElementById('incAmount').value);
