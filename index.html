@@ -163,16 +163,16 @@ button.danger:hover{background:#FCEBEB}
 <!-- LOANS -->
 <div class="section" id="tab-loans">
   <div class="card">
-    <div class="card-title" style="justify-content:space-between">
-      <span><i class="ti ti-building-bank" aria-hidden="true"></i> הלוואות פעילות</span>
-      <div style="display:flex;gap:4px">
-        <button id="lf-all"    class="loan-filter active" onclick="setLoanFilter('all')">הכל</button>
-        <button id="lf-regular" class="loan-filter"       onclick="setLoanFilter('regular')">רגילות</button>
-        <button id="lf-balloon" class="loan-filter"       onclick="setLoanFilter('balloon')">בלון</button>
-      </div>
-    </div>
+    <div class="card-title"><i class="ti ti-building-bank" aria-hidden="true"></i> הלוואות פעילות</div>
     <div style="overflow-x:auto">
-      <table><thead><tr><th>סוג</th><th>בנק</th><th>שם</th><th>קרן</th><th>יתרה</th><th>תשלום</th><th>תחילה</th><th>סיום</th><th></th></tr></thead>
+      <table><thead><tr>
+        <th><select id="loanTypeFilter" onchange="setLoanFilter(this.value)" style="font-size:11px;border:none;background:transparent;cursor:pointer;color:#666;padding:0">
+          <option value="all">סוג: הכל</option>
+          <option value="regular">רגילות</option>
+          <option value="balloon">בלון</option>
+        </select></th>
+        <th>בנק</th><th>שם</th><th>קרן</th><th>יתרה</th><th>תשלום</th><th>תחילה</th><th>סיום</th><th></th>
+      </tr></thead>
       <tbody id="loansTbody"><tr><td colspan="9" class="empty">טוען...</td></tr></tbody></table>
     </div>
   </div>
@@ -486,9 +486,8 @@ function closeMonthPanel(){
 
 function setLoanFilter(f){
   _loanFilter=f;
-  ['all','regular','balloon'].forEach(k=>{
-    document.getElementById('lf-'+k).classList.toggle('active',k===f);
-  });
+  const sel=document.getElementById('loanTypeFilter');
+  if(sel)sel.value=f;
   renderLoans();
 }
 function renderLoans(){
