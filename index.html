@@ -80,6 +80,8 @@ button.danger:hover{background:#FCEBEB}
 .ledger-num{text-align:left;direction:ltr}
 .panel-overlay{display:none;position:fixed;inset:0;z-index:899}
 .panel-overlay.open{display:block}
+.loan-filter{font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid #d0d0d0;background:#fff;cursor:pointer;color:#666}
+.loan-filter.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
 </style>
 </head>
 <body>
@@ -161,10 +163,17 @@ button.danger:hover{background:#FCEBEB}
 <!-- LOANS -->
 <div class="section" id="tab-loans">
   <div class="card">
-    <div class="card-title"><i class="ti ti-building-bank" aria-hidden="true"></i> הלוואות פעילות</div>
+    <div class="card-title" style="justify-content:space-between">
+      <span><i class="ti ti-building-bank" aria-hidden="true"></i> הלוואות פעילות</span>
+      <div style="display:flex;gap:4px">
+        <button id="lf-all"    class="loan-filter active" onclick="setLoanFilter('all')">הכל</button>
+        <button id="lf-regular" class="loan-filter"       onclick="setLoanFilter('regular')">רגילות</button>
+        <button id="lf-balloon" class="loan-filter"       onclick="setLoanFilter('balloon')">בלון</button>
+      </div>
+    </div>
     <div style="overflow-x:auto">
-      <table><thead><tr><th>בנק</th><th>שם</th><th>קרן</th><th>יתרה</th><th>תשלום</th><th>תחילה</th><th>סיום</th><th></th></tr></thead>
-      <tbody id="loansTbody"><tr><td colspan="8" class="empty">טוען...</td></tr></tbody></table>
+      <table><thead><tr><th>סוג</th><th>בנק</th><th>שם</th><th>קרן</th><th>יתרה</th><th>תשלום</th><th>תחילה</th><th>סיום</th><th></th></tr></thead>
+      <tbody id="loansTbody"><tr><td colspan="9" class="empty">טוען...</td></tr></tbody></table>
     </div>
   </div>
   <div class="card">
@@ -287,6 +296,7 @@ const bankClass=b=>b==='בינלאומי'?'b-intl':b==='פועלים'?'b-poalim'
 const state={loans:[],income:[],salary:[],cc:[],other:[],banks:[]};
 let mainChart=null;
 let _months=[],_balData=[];
+let _loanFilter='all';
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2500);}
 
@@ -474,22 +484,34 @@ function closeMonthPanel(){
   document.getElementById('panelOverlay').classList.remove('open');
 }
 
+function setLoanFilter(f){
+  _loanFilter=f;
+  ['all','regular','balloon'].forEach(k=>{
+    document.getElementById('lf-'+k).classList.toggle('active',k===f);
+  });
+  renderLoans();
+}
 function renderLoans(){
   const tb=document.getElementById('loansTbody');
   const tot=state.loans.reduce((s,l)=>s+l.balance,0);
-  tb.innerHTML=(state.loans.length?state.loans.map(l=>`<tr>
+  const visible=state.loans.filter(l=>_loanFilter==='all'||(_loanFilter==='balloon'?l.balloon:!l.balloon));
+  const loanBadge=b=>b
+    ?'<span style="background:#FEF9C3;color:#854D0E;border-radius:4px;padding:1px 6px;font-size:10px">בלון</span>'
+    :'<span style="background:#F1F5F9;color:#475569;border-radius:4px;padding:1px 6px;font-size:10px">רגילה</span>';
+  tb.innerHTML=(visible.length?visible.map(l=>`<tr>
+    <td>${loanBadge(l.balloon)}</td>
     <td><span class="bank-tag ${bankClass(l.bank)}">${l.bank}</span></td>
     <td>${l.name}</td><td>${fmt(l.principal)}</td>
     <td style="font-weight:500;color:#E24B4A">${fmt(l.balance)}</td>
-    <td>${l.payment>0?fmt(l.payment)+(l.balloon?' בלון':'/חו׳'):'—'}</td>
+    <td>${l.payment>0?fmt(l.payment)+'/חו׳':'—'}</td>
     <td style="white-space:nowrap;font-size:12px">${fmtDate(l.start)}</td>
     <td style="white-space:nowrap;font-size:12px">${fmtDate(l.end)}</td>
     <td style="display:flex;gap:4px">
       <button onclick="editLoan(${l.id})"><i class="ti ti-pencil"></i></button>
       <button class="danger" onclick="removeLoan(${l.id})"><i class="ti ti-trash"></i></button>
     </td>
-  </tr>`).join(''):'<tr><td colspan="8" class="empty">אין הלוואות</td></tr>')
-  +`<tr style="font-weight:500;background:#f8f8f6"><td colspan="3">סה"כ חוב</td><td style="color:#E24B4A">${fmt(tot)}</td><td colspan="4"></td></tr>`;
+  </tr>`).join(''):`<tr><td colspan="9" class="empty">אין הלוואות</td></tr>`)
+  +`<tr style="font-weight:500;background:#f8f8f6"><td colspan="4">סה"כ חוב</td><td style="color:#E24B4A">${fmt(tot)}</td><td colspan="4"></td></tr>`;
 }
 
 async function addLoan(){
