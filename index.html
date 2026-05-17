@@ -286,6 +286,7 @@ const fmt=v=>'₪'+Math.round(Math.abs(v)).toLocaleString();
 const bankClass=b=>b==='בינלאומי'?'b-intl':b==='פועלים'?'b-poalim':b==='לאומי'?'b-leumi':b==='מזרחי'?'b-mizrahi':'';
 const state={loans:[],income:[],salary:[],cc:[],other:[],banks:[]};
 let mainChart=null;
+let _months=[],_balData=[];
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2500);}
 
@@ -387,6 +388,7 @@ function updateAll(){
   const btl=document.getElementById('bankTotalLabel');if(btl)btl.textContent=(bankTotal<0?'-':'')+fmt(bankTotal);
   const balData=[];let runBal=bankTotal;
   months.forEach(m=>{balData.push(runBal);runBal+=calcMonth(m).net;});
+  _months=months;_balData=[...balData];
   if(mainChart)mainChart.destroy();
   const labels=months.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleString('he',{month:'short',year:'2-digit'});});
   mainChart=new Chart(document.getElementById('mainChart').getContext('2d'),{
@@ -401,6 +403,7 @@ function updateAll(){
       {type:'line',label:'יתרה',data:balData,borderColor:'#185FA5',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:0.3}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
+      onClick:(evt,elements)=>{if(!elements.length)return;const idx=elements[0].index;openMonthPanel(_months[idx],_balData[idx]);},
       plugins:{legend:{display:false},tooltip:{callbacks:{
         label:ctx=>`${ctx.dataset.label}: ₪${Math.round(Math.abs(ctx.raw)).toLocaleString()}`,
         footer:items=>{
@@ -417,6 +420,58 @@ function updateAll(){
   pl.innerHTML=months.map(m=>{const c=calcMonth(m);const nc=c.net>=0?'color:#1D9E75':'color:#E24B4A';
     return`<tr><td>${m}</td><td style="color:#1D9E75">${fmt(c.inc)}</td><td style="color:#E24B4A">${fmt(c.loans)}</td><td style="color:#E24B4A">${fmt(c.sal)}</td><td style="color:#E24B4A">${fmt(c.cc)}</td><td style="color:#E24B4A">${fmt(c.oth)}</td><td style="${nc};font-weight:500">${(c.net<0?'-':'')+fmt(c.net)}</td></tr>`;
   }).join('');
+}
+
+function buildLedger(m,openingBal){
+  const entries=[];
+  state.income.filter(i=>i.month===m).forEach(i=>{
+    entries.push({date:i.date||`${m}-01`,label:i.source,amount:Math.round(i.amount*(i.prob/100)),dir:1});
+  });
+  state.salary.filter(s=>s.month===m).forEach(s=>{
+    entries.push({date:`${m}-01`,label:'שכר'+(s.notes?` – ${s.notes}`:''),amount:s.amount,dir:-1});
+  });
+  state.cc.filter(c=>c.month===m).forEach(c=>{
+    entries.push({date:`${m}-01`,label:`אשראי – ${c.name}`,amount:c.amount,dir:-1});
+  });
+  state.other.filter(o=>o.month===m).forEach(o=>{
+    entries.push({date:`${m}-01`,label:o.category,amount:o.amount,dir:-1});
+  });
+  state.loans.forEach(l=>{
+    if(loanPmt(l,m)<=0)return;
+    const day=l.start&&l.start.length===10?l.start.substring(8):'01';
+    entries.push({date:`${m}-${day}`,label:`הלוואה – ${l.name}`,amount:l.payment,dir:-1});
+  });
+  entries.sort((a,b)=>a.date.localeCompare(b.date));
+  let bal=openingBal;
+  return entries.map(e=>{bal+=e.dir*e.amount;return{...e,balance:bal};});
+}
+
+function openMonthPanel(m,openingBal){
+  const [y,mo]=m.split('-');
+  const title=new Date(+y,+mo-1).toLocaleString('he',{month:'long',year:'numeric'});
+  document.getElementById('monthPanelTitle').textContent=title;
+  const entries=buildLedger(m,openingBal);
+  const closingBal=entries.length?entries[entries.length-1].balance:openingBal;
+  const fmtBal=v=>(v<0?'-':'')+fmt(v);
+  const balColor=v=>v>=0?'#1D9E75':'#E24B4A';
+  document.getElementById('monthPanelBody').innerHTML=`
+    <div class="ledger-row ledger-header"><span>תאריך</span><span>תיאור</span><span class="ledger-num">תנועה</span><span class="ledger-num">יתרה</span></div>
+    <div class="ledger-row ledger-bal-row"><span></span><span>יתרת פתיחה</span><span></span><span class="ledger-num">${fmtBal(openingBal)}</span></div>
+    ${entries.map(e=>`<div class="ledger-row">
+      <span>${fmtDate(e.date)}</span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.label}</span>
+      <span class="ledger-num" style="color:${e.dir===1?'#1D9E75':'#E24B4A'}">${e.dir===1?'+':'-'}${fmt(e.amount)}</span>
+      <span class="ledger-num" style="font-weight:500;color:${balColor(e.balance)}">${fmtBal(e.balance)}</span>
+    </div>`).join('')}
+    <div class="ledger-row ledger-bal-row"><span></span><span>יתרת סגירה</span><span></span><span class="ledger-num" style="color:${balColor(closingBal)}">${fmtBal(closingBal)}</span></div>
+  `;
+  document.getElementById('monthPanel').classList.add('open');
+  document.getElementById('panelOverlay').classList.add('open');
+}
+
+function closeMonthPanel(){
+  document.getElementById('monthPanel').classList.remove('open');
+  document.getElementById('panelOverlay').classList.remove('open');
 }
 
 function renderLoans(){
@@ -666,6 +721,7 @@ _auth.onAuthStateChanged(async (user) => {
     KEY = cfg.key;
     document.getElementById('loginScreen').classList.add('hidden');
     ['salMonth','ccMonth','incMonth','otherMonth','forecastMonth'].forEach(buildMonthOptions);
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('editLoanModal').classList.remove('open');closeMonthPanel();}});
     loadAll();
   } catch(e) {
     document.getElementById('loginError').textContent = 'שגיאת חיבור, נסה שוב';
