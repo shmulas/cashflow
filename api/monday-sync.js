@@ -80,13 +80,15 @@ async function runSync() {
     if (!dateStr) { skipped.push({ name: item.name, reason: 'no date', amount }); continue; }
 
     const nowYM = toYM(new Date());
-    const calculated = toYM(addDays(dateStr, 60));
+    const payDay = addDays(dateStr, 60);
+    const calculated = toYM(payDay);
     const type = calculated < nowYM ? 'collection' : 'invoice';
     const month = calculated < nowYM ? nowYM : calculated;
+    const date = `${payDay.getFullYear()}-${String(payDay.getMonth()+1).padStart(2,'0')}-${String(payDay.getDate()).padStart(2,'0')}`;
     const company = col['חברה']?.display_value || col['חברה']?.text || null;
     const source = company ? `${company} (${item.name})` : item.name;
 
-    toInsert.push({ monday_id: String(item.id), source, amount, month, prob: 100, type });
+    toInsert.push({ monday_id: String(item.id), source, amount, month, prob: 100, type, date });
   }
 
   // Step 1: delete all existing Monday rows
