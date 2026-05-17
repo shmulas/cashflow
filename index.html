@@ -70,6 +70,16 @@ button.danger:hover{background:#FCEBEB}
 .modal-box{background:#fff;border-radius:14px;padding:1.5rem;width:min(560px,95vw);max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18)}
 .modal-box h3{margin:0 0 1rem;font-size:16px}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
+.month-panel{position:fixed;top:0;right:-440px;width:440px;height:100vh;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.13);z-index:900;transition:right .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+.month-panel.open{right:0}
+.month-panel-header{display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem;border-bottom:1px solid #e0e0e0;font-weight:500;font-size:15px;background:#fff;flex-shrink:0}
+.month-panel-body{flex:1;overflow-y:auto}
+.ledger-row{display:grid;grid-template-columns:64px 1fr 85px 90px;gap:6px;padding:7px 1.25rem;border-bottom:0.5px solid #f0f0f0;font-size:12px;align-items:center}
+.ledger-header{font-size:11px;color:#666;font-weight:500;background:#f8f8f6;position:sticky;top:0;z-index:1}
+.ledger-bal-row{background:#f0fdf4;font-weight:500}
+.ledger-num{text-align:left;direction:ltr}
+.panel-overlay{display:none;position:fixed;inset:0;z-index:899}
+.panel-overlay.open{display:block}
 </style>
 </head>
 <body>
@@ -663,6 +673,16 @@ _auth.onAuthStateChanged(async (user) => {
   }
 });
 </script>
+
+<!-- Month Detail Panel -->
+<div class="panel-overlay" id="panelOverlay" onclick="closeMonthPanel()"></div>
+<div id="monthPanel" class="month-panel">
+  <div class="month-panel-header">
+    <span id="monthPanelTitle"></span>
+    <button onclick="closeMonthPanel()" style="background:none;border:none;cursor:pointer;color:#666;font-size:20px;line-height:1"><i class="ti ti-x"></i></button>
+  </div>
+  <div id="monthPanelBody" class="month-panel-body"></div>
+</div>
 
 <!-- Edit Loan Modal -->
 <div class="modal-overlay" id="editLoanModal">
