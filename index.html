@@ -440,7 +440,7 @@ function updateAll(){
 function buildLedger(m,openingBal){
   const entries=[];
   state.income.filter(i=>i.month===m).forEach(i=>{
-    entries.push({date:i.date||`${m}-01`,label:i.source,amount:Math.round(i.amount*(i.prob/100)),dir:1});
+    entries.push({date:i.date||`${m}-01`,label:i.source,amount:Math.round(i.amount*(i.prob/100)),dir:1,type:i.type});
   });
   state.salary.filter(s=>s.month===m).forEach(s=>{
     entries.push({date:`${m}-01`,label:'שכר'+(s.notes?` – ${s.notes}`:''),amount:s.amount,dir:-1});
@@ -475,7 +475,7 @@ function openMonthPanel(m,openingBal){
     ${entries.map(e=>`<div class="ledger-row">
       <span>${fmtDate(e.date)}</span>
       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.label}</span>
-      <span class="ledger-num" style="color:${e.dir===1?'#1D9E75':'#E24B4A'}">${e.dir===1?'+':'-'}${fmt(e.amount)}</span>
+      <span class="ledger-num" style="color:${e.dir===1?(e.type==='expected'?'#0EA5E9':'#1D9E75'):'#E24B4A'}">${e.dir===1?'+':'-'}${fmt(e.amount)}</span>
       <span class="ledger-num" style="font-weight:500;color:${balColor(e.balance)}">${fmtBal(e.balance)}</span>
     </div>`).join('')}
     <div class="ledger-row ledger-bal-row"><span></span><span>יתרת סגירה</span><span></span><span class="ledger-num" style="color:${balColor(closingBal)}">${fmtBal(closingBal)}</span></div>
