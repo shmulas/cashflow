@@ -265,6 +265,7 @@ button.danger:hover{background:#FCEBEB}
       <div><div class="form-label">קטגוריה</div><input type="text" id="otherCat"></div>
       <div><div class="form-label">חודש</div><select id="otherMonth"></select></div>
       <div><div class="form-label">סכום (₪)</div><input type="number" id="otherAmount"></div>
+      <div><div class="form-label">תאריך מדויק</div><input type="date" id="otherDate"></div>
       <div style="display:flex;align-items:center;gap:6px;padding-top:18px"><input type="checkbox" id="otherRecurring" style="width:auto"><label for="otherRecurring" style="font-size:12px">חוזר כל חודש</label></div>
     </div>
     <button class="primary" onclick="addOther()"><i class="ti ti-plus" aria-hidden="true"></i> הוסף</button>
@@ -449,7 +450,7 @@ function buildLedger(m,openingBal){
     entries.push({date:`${m}-01`,label:`אשראי – ${c.name}`,amount:c.amount,dir:-1,color:'#F4845F'});
   });
   state.other.filter(o=>(o.recurring&&m>=o.month)||(!o.recurring&&o.month===m)).forEach(o=>{
-    entries.push({date:`${m}-01`,label:o.category,amount:o.amount,dir:-1,color:'#C9A96E'});
+    entries.push({date:o.date||`${m}-01`,label:o.category,amount:o.amount,dir:-1,color:'#C9A96E'});
   });
   state.loans.forEach(l=>{
     if(loanPmt(l,m)<=0)return;
@@ -654,7 +655,7 @@ function renderOther(){
   const tb=document.getElementById('otherTbody');
   const recurBadge='<span style="background:#EDE9FE;color:#5B21B6;border-radius:4px;padding:1px 6px;font-size:10px">חוזר</span>';
   tb.innerHTML=state.other.length?state.other.map(o=>`<tr>
-    <td>${o.category}</td><td>${o.month}</td><td>${fmt(o.amount)}</td>
+    <td>${o.category}</td><td>${o.date?fmtDate(o.date):o.month}</td><td>${fmt(o.amount)}</td>
     <td>${o.recurring?recurBadge:'—'}</td>
     <td style="display:flex;gap:4px"><button onclick="editOther(${o.id})"><i class="ti ti-pencil"></i></button><button class="danger" onclick="removeOther(${o.id})"><i class="ti ti-trash"></i></button></td>
   </tr>`).join(''):'<tr><td colspan="5" class="empty">אין הוצאות אחרות</td></tr>';
@@ -664,10 +665,11 @@ async function addOther(){
   if(!category||!month||!amount)return alert('מלא שדות חובה');
   try{
     const recurring=document.getElementById('otherRecurring').checked;
-    const row=await db('POST','other_expenses',{category,month,amount,recurring});
+    const date=document.getElementById('otherDate').value||null;
+    const row=await db('POST','other_expenses',{category,month,amount,recurring,date});
     state.other.push(Array.isArray(row)?row[0]:row);
     renderOther();updateAll();toast('הוצאה נוספה');
-    document.getElementById('otherCat').value='';document.getElementById('otherAmount').value='';
+    document.getElementById('otherCat').value='';document.getElementById('otherAmount').value='';document.getElementById('otherDate').value='';
   }catch(e){alert('שגיאה: '+e.message);}
 }
 async function removeOther(id){
@@ -751,6 +753,7 @@ function editOther(id){
   document.getElementById('editOtherMonth').value=o.month||'';
   document.getElementById('editOtherAmount').value=o.amount||'';
   document.getElementById('editOtherRecurring').checked=!!o.recurring;
+  document.getElementById('editOtherDate').value=o.date||'';
   document.getElementById('editOtherModal').classList.add('open');
 }
 async function saveOtherEdit(){
@@ -759,11 +762,12 @@ async function saveOtherEdit(){
   const month=document.getElementById('editOtherMonth').value;
   const amount=parseFloat(document.getElementById('editOtherAmount').value);
   const recurring=document.getElementById('editOtherRecurring').checked;
+  const date=document.getElementById('editOtherDate').value||null;
   if(!category||!month||!amount)return alert('מלא שדות חובה');
   try{
-    await db('PATCH','other_expenses',{category,month,amount,recurring},`?id=eq.${id}`);
+    await db('PATCH','other_expenses',{category,month,amount,recurring,date},`?id=eq.${id}`);
     const idx=state.other.findIndex(o=>o.id===id);
-    if(idx>=0)state.other[idx]={...state.other[idx],category,month,amount,recurring};
+    if(idx>=0)state.other[idx]={...state.other[idx],category,month,amount,recurring,date};
     document.getElementById('editOtherModal').classList.remove('open');
     renderOther();updateAll();toast('הוצאה עודכנה');
   }catch(e){alert('שגיאה: '+e.message);}
@@ -933,6 +937,7 @@ _auth.onAuthStateChanged(async (user) => {
       <div><div class="form-label">קטגוריה</div><input type="text" id="editOtherCat"></div>
       <div><div class="form-label">חודש התחלה</div><input type="month" id="editOtherMonth"></div>
       <div><div class="form-label">סכום (₪)</div><input type="number" id="editOtherAmount"></div>
+      <div><div class="form-label">תאריך מדויק</div><input type="date" id="editOtherDate"></div>
       <div style="display:flex;align-items:center;gap:6px;padding-top:18px"><input type="checkbox" id="editOtherRecurring" style="width:auto"><label for="editOtherRecurring" style="font-size:12px">חוזר כל חודש</label></div>
     </div>
     <div class="modal-actions">
