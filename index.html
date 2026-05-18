@@ -281,18 +281,31 @@ button.danger:hover{background:#FCEBEB}
 <!-- DAILY -->
 <div class="section" id="tab-daily">
   <div class="card">
-    <div class="card-title"><i class="ti ti-chart-line" aria-hidden="true"></i> תזרים יומי</div>
-    <div style="max-width:260px;margin-bottom:1rem">
-      <div class="form-label">בחר חודש</div>
-      <select id="dailyMonth" onchange="renderDailyChart(this.value)"></select>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:1rem;flex-wrap:wrap">
+      <div class="card-title" style="margin-bottom:0"><i class="ti ti-chart-line" aria-hidden="true"></i> תזרים יומי</div>
+      <div style="max-width:220px;flex:1">
+        <select id="dailyMonth" onchange="renderDailyChart(this.value)"></select>
+      </div>
     </div>
-    <div class="legend">
-      <span><span class="leg-dot" style="background:#1D9E75"></span>הכנסות</span>
-      <span><span class="leg-dot" style="background:#E24B4A"></span>הוצאות</span>
-      <span><span class="leg-dot" style="background:#185FA5"></span>יתרה</span>
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:1.25rem;align-items:start">
+      <div>
+        <div class="legend">
+          <span><span class="leg-dot" style="background:#1D9E75"></span>הכנסות</span>
+          <span><span class="leg-dot" style="background:#E24B4A"></span>הוצאות</span>
+          <span><span class="leg-dot" style="background:#185FA5"></span>יתרה</span>
+        </div>
+        <div class="chart-wrap" style="height:320px"><canvas id="dailyChartCanvas"></canvas></div>
+        <div id="dailyEmpty" class="empty" style="display:none">אין נתונים לחודש זה</div>
+      </div>
+      <div style="max-height:370px;overflow-y:auto;border:0.5px solid #e0e0e0;border-radius:8px">
+        <table style="font-size:11px">
+          <thead><tr style="position:sticky;top:0;background:#f8f8f6;z-index:1">
+            <th style="font-size:10px">תאריך</th><th style="font-size:10px">תיאור</th><th style="font-size:10px;text-align:left;direction:ltr">תנועה</th><th style="font-size:10px;text-align:left;direction:ltr">יתרה</th>
+          </tr></thead>
+          <tbody id="dailyLedgerBody"></tbody>
+        </table>
+      </div>
     </div>
-    <div class="chart-wrap" style="height:320px"><canvas id="dailyChartCanvas"></canvas></div>
-    <div id="dailyEmpty" class="empty" style="display:none">אין נתונים לחודש זה</div>
   </div>
 </div>
 
@@ -533,9 +546,11 @@ function getOpeningBal(m){
 }
 function renderDailyChart(m){
   const emptyEl=document.getElementById('dailyEmpty');
+  const lb=document.getElementById('dailyLedgerBody');
   if(!m){if(emptyEl)emptyEl.style.display='block';return;}
   const entries=buildLedger(m,getOpeningBal(m));
   if(emptyEl)emptyEl.style.display=entries.length?'none':'block';
+  if(!entries.length){if(lb)lb.innerHTML='';return;}
   const dateMap={};
   entries.forEach(e=>{
     if(!dateMap[e.date])dateMap[e.date]={inc:0,exp:0,balance:e.balance};
@@ -549,6 +564,17 @@ function renderDailyChart(m){
   const balData=[openBal,...dates.map(d=>dateMap[d].balance)];
   const incData=[0,...dates.map(d=>dateMap[d].inc)];
   const expData=[0,...dates.map(d=>-dateMap[d].exp)];
+  const fmtBal=v=>(v<0?'-':'')+fmt(v);
+  const balColor=v=>v>=0?'#1D9E75':'#E24B4A';
+  const lb=document.getElementById('dailyLedgerBody');
+  lb.innerHTML=`<tr style="background:#f0fdf4;font-weight:500"><td colspan="2">יתרת פתיחה</td><td></td><td style="text-align:left;direction:ltr">${fmtBal(openBal)}</td></tr>`
+    +entries.map(e=>`<tr>
+      <td style="white-space:nowrap">${fmtDate(e.date)}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.label}</td>
+      <td style="text-align:left;direction:ltr;color:${e.dir===1?(e.type==='expected'?'#0EA5E9':'#1D9E75'):(e.color||'#E24B4A')}">${e.dir===1?'+':'-'}${fmt(e.amount)}</td>
+      <td style="text-align:left;direction:ltr;font-weight:500;color:${balColor(e.balance)}">${fmtBal(e.balance)}</td>
+    </tr>`).join('')
+    +`<tr style="background:#f0fdf4;font-weight:500"><td colspan="2">יתרת סגירה</td><td></td><td style="text-align:left;direction:ltr;color:${balColor(entries.length?entries[entries.length-1].balance:openBal)}">${fmtBal(entries.length?entries[entries.length-1].balance:openBal)}</td></tr>`;
   if(dailyChart)dailyChart.destroy();
   dailyChart=new Chart(document.getElementById('dailyChartCanvas').getContext('2d'),{
     data:{labels:['פתיחה',...labels],datasets:[
