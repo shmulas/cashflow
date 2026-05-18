@@ -410,6 +410,12 @@ function calcMonth(m){
   const exp=loans+sal+cc+oth;
   return{inv,coll,forecast,inc,loans,sal,cc,oth,exp,net:inc-exp};
 }
+function calcMidBal(m,openingBal){
+  const midDate=`${m}-15`;
+  const entries=buildLedger(m,openingBal);
+  const before=entries.filter(e=>e.date<=midDate);
+  return before.length?before[before.length-1].balance:openingBal;
+}
 function calcMonthProjected(m){
   const curM=localYM(new Date());
   if(m!==curM)return calcMonth(m).net;
@@ -456,25 +462,27 @@ function updateAll(){
   months.forEach(m=>{balData.push(runBal);runBal+=calcMonthProjected(m);chartBalData.push(runBal);});
   _months=months;_balData=[...balData];
   if(mainChart)mainChart.destroy();
-  const labels=months.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleString('he',{month:'short',year:'2-digit'});});
+  const labels=months.flatMap(m=>{const[y,mo]=m.split('-');return[new Date(y,mo-1).toLocaleString('he',{month:'short',year:'2-digit'}),'',''];});
+  const midBalData=months.map((m,i)=>calcMidBal(m,balData[i]));
+  const lineData=months.flatMap((m,i)=>[balData[i],midBalData[i],chartBalData[i]]);
   mainChart=new Chart(document.getElementById('mainChart').getContext('2d'),{
     data:{labels,datasets:[
-      {type:'bar',label:'שכר',data:months.map(m=>calcMonth(m).sal),backgroundColor:'rgba(226,75,74,0.85)',borderWidth:0,stack:'exp'},
-      {type:'bar',label:'הלוואות',data:months.map(m=>calcMonth(m).loans),backgroundColor:'rgba(155,32,32,0.85)',borderWidth:0,stack:'exp'},
-      {type:'bar',label:'אשראי',data:months.map(m=>calcMonth(m).cc),backgroundColor:'rgba(244,132,95,0.85)',borderWidth:0,stack:'exp'},
-      {type:'bar',label:'אחר',data:months.map(m=>calcMonth(m).oth),backgroundColor:'rgba(201,169,110,0.85)',borderWidth:0,stack:'exp'},
-      {type:'bar',label:'הכנסות',      data:months.map(m=>calcMonth(m).inv),     backgroundColor:'rgba(29,158,117,0.75)', borderWidth:0,stack:'inc'},
-      {type:'bar',label:'גביה',         data:months.map(m=>calcMonth(m).coll),    backgroundColor:'rgba(250,204,21,0.9)',  borderWidth:0,stack:'inc'},
-      {type:'bar',label:'צפי חשבוניות',data:months.map(m=>calcMonth(m).forecast),backgroundColor:'rgba(56,189,248,0.75)', borderWidth:0,stack:'inc'},
-      {type:'line',label:'יתרה',data:chartBalData,borderColor:'#185FA5',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:0.3}
+      {type:'bar',label:'שכר',data:months.flatMap(m=>[calcMonth(m).sal,null,null]),backgroundColor:'rgba(226,75,74,0.85)',borderWidth:0,stack:'exp',categoryPercentage:3,barPercentage:0.9},
+      {type:'bar',label:'הלוואות',data:months.flatMap(m=>[calcMonth(m).loans,null,null]),backgroundColor:'rgba(155,32,32,0.85)',borderWidth:0,stack:'exp',categoryPercentage:3,barPercentage:0.9},
+      {type:'bar',label:'אשראי',data:months.flatMap(m=>[calcMonth(m).cc,null,null]),backgroundColor:'rgba(244,132,95,0.85)',borderWidth:0,stack:'exp',categoryPercentage:3,barPercentage:0.9},
+      {type:'bar',label:'אחר',data:months.flatMap(m=>[calcMonth(m).oth,null,null]),backgroundColor:'rgba(201,169,110,0.85)',borderWidth:0,stack:'exp',categoryPercentage:3,barPercentage:0.9},
+      {type:'bar',label:'הכנסות',data:months.flatMap(m=>[calcMonth(m).inv,null,null]),backgroundColor:'rgba(29,158,117,0.75)',borderWidth:0,stack:'inc',categoryPercentage:3,barPercentage:0.9},
+      {type:'bar',label:'גביה',data:months.flatMap(m=>[calcMonth(m).coll,null,null]),backgroundColor:'rgba(250,204,21,0.9)',borderWidth:0,stack:'inc',categoryPercentage:3,barPercentage:0.9},
+      {type:'bar',label:'צפי חשבוניות',data:months.flatMap(m=>[calcMonth(m).forecast,null,null]),backgroundColor:'rgba(56,189,248,0.75)',borderWidth:0,stack:'inc',categoryPercentage:3,barPercentage:0.9},
+      {type:'line',label:'יתרה',data:lineData,borderColor:'#185FA5',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:0.3}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
-      onClick:(evt,elements)=>{if(!elements.length)return;const idx=elements[0].index;openMonthPanel(_months[idx],_balData[idx]);},
+      onClick:(evt,elements)=>{if(!elements.length)return;const monthIdx=Math.floor(elements[0].index/3);openMonthPanel(_months[monthIdx],_balData[monthIdx]);},
       plugins:{legend:{display:false},tooltip:{callbacks:{
-        label:ctx=>`${ctx.dataset.label}: ₪${Math.round(Math.abs(ctx.raw)).toLocaleString()}`,
+        label:ctx=>ctx.raw===null?'':(`${ctx.dataset.label}: ₪${Math.round(Math.abs(ctx.raw)).toLocaleString()}`),
         footer:items=>{
           const incLabels=['הכנסות','גביה','צפי חשבוניות'];
-          const incItems=items.filter(i=>incLabels.includes(i.dataset.label));
+          const incItems=items.filter(i=>incLabels.includes(i.dataset.label)&&i.raw!==null);
           if(!incItems.length)return[];
           const tot=incItems.reduce((s,i)=>s+Math.abs(i.raw),0);
           return[`סה"כ הכנסות: ₪${Math.round(tot).toLocaleString()}`];
