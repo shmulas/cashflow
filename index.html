@@ -411,6 +411,7 @@ function calcMonth(m){
   return{inv,coll,forecast,inc,loans,sal,cc,oth,exp,net:inc-exp};
 }
 function calcMidBal(m,openingBal){
+  if(m===localYM(new Date()))return openingBal;
   const midDate=`${m}-15`;
   const entries=buildLedger(m,openingBal);
   const before=entries.filter(e=>e.date<=midDate);
