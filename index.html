@@ -566,7 +566,6 @@ function renderDailyChart(m){
   const expData=[0,...dates.map(d=>-dateMap[d].exp)];
   const fmtBal=v=>(v<0?'-':'')+fmt(v);
   const balColor=v=>v>=0?'#1D9E75':'#E24B4A';
-  const lb=document.getElementById('dailyLedgerBody');
   lb.innerHTML=`<tr style="background:#f0fdf4;font-weight:500"><td colspan="2">יתרת פתיחה</td><td></td><td style="text-align:left;direction:ltr">${fmtBal(openBal)}</td></tr>`
     +entries.map(e=>`<tr>
       <td style="white-space:nowrap">${fmtDate(e.date)}</td>
