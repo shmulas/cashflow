@@ -479,7 +479,17 @@ function updateAll(){
     options:{responsive:true,maintainAspectRatio:false,
       onClick:(evt,elements)=>{if(!elements.length)return;const monthIdx=Math.floor(elements[0].index/3);openMonthPanel(_months[monthIdx],_balData[monthIdx]);},
       plugins:{legend:{display:false},tooltip:{callbacks:{
-        label:ctx=>ctx.raw===null?'':(`${ctx.dataset.label}: ₪${Math.round(Math.abs(ctx.raw)).toLocaleString()}`),
+        label:ctx=>{
+          if(ctx.raw===null)return'';
+          if(ctx.dataset.label==='יתרה'){
+            const monthIdx=Math.floor(ctx.dataIndex/3);
+            const pos=ctx.dataIndex%3;
+            const m=_months[monthIdx];const[y,mo]=m.split('-');
+            const day=pos===0?'01':pos===1?'15':String(new Date(+y,+mo,0).getDate());
+            return`יתרה ${day}/${mo}/${y}: ₪${Math.round(Math.abs(ctx.raw)).toLocaleString()}`;
+          }
+          return`${ctx.dataset.label}: ₪${Math.round(Math.abs(ctx.raw)).toLocaleString()}`;
+        },
         footer:items=>{
           const incLabels=['הכנסות','גביה','צפי חשבוניות'];
           const incItems=items.filter(i=>incLabels.includes(i.dataset.label)&&i.raw!==null);
