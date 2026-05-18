@@ -383,7 +383,7 @@ function updateAll(){
   const tForecast=state.income.filter(i=>i.type==='expected').reduce((s,i)=>s+i.amount*(i.prob/100),0);
   const tInc=tInv+tColl+tForecast;
   const net=tInc-tExp;
-  document.getElementById('kpiIn').textContent=fmt(tInv);
+  document.getElementById('kpiIn').textContent=fmt(tInv+tColl);
   document.getElementById('kpiForecast').textContent=fmt(tForecast);
   document.getElementById('kpiColl').textContent=fmt(tColl);
   document.getElementById('kpiOut').textContent=fmt(tExp);
