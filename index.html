@@ -265,11 +265,12 @@ button.danger:hover{background:#FCEBEB}
       <div><div class="form-label">קטגוריה</div><input type="text" id="otherCat"></div>
       <div><div class="form-label">חודש</div><select id="otherMonth"></select></div>
       <div><div class="form-label">סכום (₪)</div><input type="number" id="otherAmount"></div>
+      <div style="display:flex;align-items:center;gap:6px;padding-top:18px"><input type="checkbox" id="otherRecurring" style="width:auto"><label for="otherRecurring" style="font-size:12px">חוזר כל חודש</label></div>
     </div>
     <button class="primary" onclick="addOther()"><i class="ti ti-plus" aria-hidden="true"></i> הוסף</button>
     <table style="margin-top:.8rem">
-      <thead><tr><th>קטגוריה</th><th>חודש</th><th>סכום</th><th></th></tr></thead>
-      <tbody id="otherTbody"><tr><td colspan="4" class="empty">טוען...</td></tr></tbody>
+      <thead><tr><th>קטגוריה</th><th>חודש</th><th>סכום</th><th>חוזר</th><th></th></tr></thead>
+      <tbody id="otherTbody"><tr><td colspan="5" class="empty">טוען...</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -370,7 +371,7 @@ function calcMonth(m){
   const loans=state.loans.reduce((s,l)=>s+loanPmt(l,m),0);
   const sal=state.salary.filter(s=>s.month===m).reduce((s,i)=>s+i.amount,0);
   const cc=state.cc.filter(c=>c.month===m).reduce((s,i)=>s+i.amount,0);
-  const oth=state.other.filter(o=>o.month===m).reduce((s,i)=>s+i.amount,0);
+  const oth=state.other.filter(o=>(o.recurring&&m>=o.month)||(!o.recurring&&o.month===m)).reduce((s,i)=>s+i.amount,0);
   const exp=loans+sal+cc+oth;
   return{inv,coll,forecast,inc,loans,sal,cc,oth,exp,net:inc-exp};
 }
@@ -447,7 +448,7 @@ function buildLedger(m,openingBal){
   state.cc.filter(c=>c.month===m).forEach(c=>{
     entries.push({date:`${m}-01`,label:`אשראי – ${c.name}`,amount:c.amount,dir:-1});
   });
-  state.other.filter(o=>o.month===m).forEach(o=>{
+  state.other.filter(o=>(o.recurring&&m>=o.month)||(!o.recurring&&o.month===m)).forEach(o=>{
     entries.push({date:`${m}-01`,label:o.category,amount:o.amount,dir:-1});
   });
   state.loans.forEach(l=>{
@@ -579,7 +580,7 @@ function typeBadge(type){
 }
 function renderIncome(){
   const tb=document.getElementById('incomeTbody');
-  tb.innerHTML=state.income.length?state.income.map(i=>`<tr><td>${typeBadge(i.type)}</td><td>${i.source}</td><td>${i.date?fmtDate(i.date):i.month}</td><td>${fmt(i.amount)}</td><td>${i.prob}%</td><td>${fmt(i.amount*i.prob/100)}</td><td><button class="danger" onclick="removeIncome(${i.id})"><i class="ti ti-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="7" class="empty">אין הכנסות עדיין</td></tr>';
+  tb.innerHTML=state.income.length?state.income.map(i=>`<tr><td>${typeBadge(i.type)}</td><td>${i.source}</td><td>${i.date?fmtDate(i.date):i.month}</td><td>${fmt(i.amount)}</td><td>${i.prob}%</td><td>${fmt(i.amount*i.prob/100)}</td><td style="display:flex;gap:4px"><button onclick="editIncome(${i.id})"><i class="ti ti-pencil"></i></button><button class="danger" onclick="removeIncome(${i.id})"><i class="ti ti-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="7" class="empty">אין הכנסות עדיין</td></tr>';
 }
 async function addIncome(){
   const source=document.getElementById('incSource').value.trim(),amount=parseFloat(document.getElementById('incAmount').value);
@@ -612,7 +613,7 @@ async function removeIncome(id){
 
 function renderSalary(){
   const tb=document.getElementById('salaryTbody');
-  tb.innerHTML=state.salary.length?state.salary.map(s=>`<tr><td>${s.month}</td><td>${fmt(s.amount)}</td><td>${s.notes||'—'}</td><td><button class="danger" onclick="removeSalary(${s.id})"><i class="ti ti-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">אין נתוני שכר</td></tr>';
+  tb.innerHTML=state.salary.length?state.salary.map(s=>`<tr><td>${s.month}</td><td>${fmt(s.amount)}</td><td>${s.notes||'—'}</td><td style="display:flex;gap:4px"><button onclick="editSalary(${s.id})"><i class="ti ti-pencil"></i></button><button class="danger" onclick="removeSalary(${s.id})"><i class="ti ti-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">אין נתוני שכר</td></tr>';
 }
 async function addSalary(){
   const month=document.getElementById('salMonth').value,amount=parseFloat(document.getElementById('salAmount').value);
@@ -632,7 +633,7 @@ async function removeSalary(id){
 
 function renderCC(){
   const tb=document.getElementById('ccTbody');
-  tb.innerHTML=state.cc.length?state.cc.map(c=>`<tr><td>${c.name}</td><td>${c.month}</td><td>${fmt(c.amount)}</td><td><button class="danger" onclick="removeCC(${c.id})"><i class="ti ti-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">אין נתוני אשראי</td></tr>';
+  tb.innerHTML=state.cc.length?state.cc.map(c=>`<tr><td>${c.name}</td><td>${c.month}</td><td>${fmt(c.amount)}</td><td style="display:flex;gap:4px"><button onclick="editCC(${c.id})"><i class="ti ti-pencil"></i></button><button class="danger" onclick="removeCC(${c.id})"><i class="ti ti-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">אין נתוני אשראי</td></tr>';
 }
 async function addCC(){
   const name=document.getElementById('ccName').value,month=document.getElementById('ccMonth').value,amount=parseFloat(document.getElementById('ccAmount').value);
@@ -651,13 +652,19 @@ async function removeCC(id){
 
 function renderOther(){
   const tb=document.getElementById('otherTbody');
-  tb.innerHTML=state.other.length?state.other.map(o=>`<tr><td>${o.category}</td><td>${o.month}</td><td>${fmt(o.amount)}</td><td><button class="danger" onclick="removeOther(${o.id})"><i class="ti ti-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">אין הוצאות אחרות</td></tr>';
+  const recurBadge='<span style="background:#EDE9FE;color:#5B21B6;border-radius:4px;padding:1px 6px;font-size:10px">חוזר</span>';
+  tb.innerHTML=state.other.length?state.other.map(o=>`<tr>
+    <td>${o.category}</td><td>${o.month}</td><td>${fmt(o.amount)}</td>
+    <td>${o.recurring?recurBadge:'—'}</td>
+    <td style="display:flex;gap:4px"><button onclick="editOther(${o.id})"><i class="ti ti-pencil"></i></button><button class="danger" onclick="removeOther(${o.id})"><i class="ti ti-trash"></i></button></td>
+  </tr>`).join(''):'<tr><td colspan="5" class="empty">אין הוצאות אחרות</td></tr>';
 }
 async function addOther(){
   const category=document.getElementById('otherCat').value.trim(),month=document.getElementById('otherMonth').value,amount=parseFloat(document.getElementById('otherAmount').value);
   if(!category||!month||!amount)return alert('מלא שדות חובה');
   try{
-    const row=await db('POST','other_expenses',{category,month,amount});
+    const recurring=document.getElementById('otherRecurring').checked;
+    const row=await db('POST','other_expenses',{category,month,amount,recurring});
     state.other.push(Array.isArray(row)?row[0]:row);
     renderOther();updateAll();toast('הוצאה נוספה');
     document.getElementById('otherCat').value='';document.getElementById('otherAmount').value='';
@@ -666,6 +673,100 @@ async function addOther(){
 async function removeOther(id){
   await db('DELETE','other_expenses',null,`?id=eq.${id}`);
   state.other=state.other.filter(o=>o.id!==id);renderOther();updateAll();toast('נמחק');
+}
+function editIncome(id){
+  const i=state.income.find(x=>x.id===id);if(!i)return;
+  document.getElementById('editIncomeId').value=id;
+  document.getElementById('editIncSource').value=i.source||'';
+  document.getElementById('editIncAmount').value=i.amount||'';
+  document.getElementById('editIncMonth').value=i.month||'';
+  document.getElementById('editIncProb').value=i.prob||100;
+  document.getElementById('editIncDate').value=i.date||'';
+  document.getElementById('editIncomeModal').classList.add('open');
+}
+async function saveIncomeEdit(){
+  const id=parseInt(document.getElementById('editIncomeId').value);
+  const source=document.getElementById('editIncSource').value.trim();
+  const amount=parseFloat(document.getElementById('editIncAmount').value);
+  const month=document.getElementById('editIncMonth').value;
+  const prob=parseFloat(document.getElementById('editIncProb').value)||100;
+  const date=document.getElementById('editIncDate').value||null;
+  if(!source||!amount||!month)return alert('מלא שדות חובה');
+  try{
+    await db('PATCH','income',{source,amount,month,prob,date},`?id=eq.${id}`);
+    const idx=state.income.findIndex(i=>i.id===id);
+    if(idx>=0)state.income[idx]={...state.income[idx],source,amount,month,prob,date};
+    document.getElementById('editIncomeModal').classList.remove('open');
+    renderIncome();updateAll();toast('הכנסה עודכנה');
+  }catch(e){alert('שגיאה: '+e.message);}
+}
+function editSalary(id){
+  const s=state.salary.find(x=>x.id===id);if(!s)return;
+  document.getElementById('editSalId').value=id;
+  document.getElementById('editSalMonth').value=s.month||'';
+  document.getElementById('editSalAmount').value=s.amount||'';
+  document.getElementById('editSalNotes').value=s.notes||'';
+  document.getElementById('editSalaryModal').classList.add('open');
+}
+async function saveSalaryEdit(){
+  const id=parseInt(document.getElementById('editSalId').value);
+  const month=document.getElementById('editSalMonth').value;
+  const amount=parseFloat(document.getElementById('editSalAmount').value);
+  const notes=document.getElementById('editSalNotes').value.trim();
+  if(!month||!amount)return alert('מלא שדות חובה');
+  try{
+    await db('PATCH','salary',{month,amount,notes},`?id=eq.${id}`);
+    const idx=state.salary.findIndex(s=>s.id===id);
+    if(idx>=0)state.salary[idx]={...state.salary[idx],month,amount,notes};
+    document.getElementById('editSalaryModal').classList.remove('open');
+    renderSalary();updateAll();toast('שכר עודכן');
+  }catch(e){alert('שגיאה: '+e.message);}
+}
+function editCC(id){
+  const c=state.cc.find(x=>x.id===id);if(!c)return;
+  document.getElementById('editCCId').value=id;
+  document.getElementById('editCCName').value=c.name||'';
+  document.getElementById('editCCMonth').value=c.month||'';
+  document.getElementById('editCCAmount').value=c.amount||'';
+  document.getElementById('editCCModal').classList.add('open');
+}
+async function saveCCEdit(){
+  const id=parseInt(document.getElementById('editCCId').value);
+  const name=document.getElementById('editCCName').value;
+  const month=document.getElementById('editCCMonth').value;
+  const amount=parseFloat(document.getElementById('editCCAmount').value);
+  if(!name||!month||!amount)return alert('מלא שדות חובה');
+  try{
+    await db('PATCH','credit_cards',{name,month,amount},`?id=eq.${id}`);
+    const idx=state.cc.findIndex(c=>c.id===id);
+    if(idx>=0)state.cc[idx]={...state.cc[idx],name,month,amount};
+    document.getElementById('editCCModal').classList.remove('open');
+    renderCC();updateAll();toast('כרטיס עודכן');
+  }catch(e){alert('שגיאה: '+e.message);}
+}
+function editOther(id){
+  const o=state.other.find(x=>x.id===id);if(!o)return;
+  document.getElementById('editOtherId').value=id;
+  document.getElementById('editOtherCat').value=o.category||'';
+  document.getElementById('editOtherMonth').value=o.month||'';
+  document.getElementById('editOtherAmount').value=o.amount||'';
+  document.getElementById('editOtherRecurring').checked=!!o.recurring;
+  document.getElementById('editOtherModal').classList.add('open');
+}
+async function saveOtherEdit(){
+  const id=parseInt(document.getElementById('editOtherId').value);
+  const category=document.getElementById('editOtherCat').value.trim();
+  const month=document.getElementById('editOtherMonth').value;
+  const amount=parseFloat(document.getElementById('editOtherAmount').value);
+  const recurring=document.getElementById('editOtherRecurring').checked;
+  if(!category||!month||!amount)return alert('מלא שדות חובה');
+  try{
+    await db('PATCH','other_expenses',{category,month,amount,recurring},`?id=eq.${id}`);
+    const idx=state.other.findIndex(o=>o.id===id);
+    if(idx>=0)state.other[idx]={...state.other[idx],category,month,amount,recurring};
+    document.getElementById('editOtherModal').classList.remove('open');
+    renderOther();updateAll();toast('הוצאה עודכנה');
+  }catch(e){alert('שגיאה: '+e.message);}
 }
 
 async function syncMonday(btn){
@@ -746,7 +847,7 @@ _auth.onAuthStateChanged(async (user) => {
     KEY = cfg.key;
     document.getElementById('loginScreen').classList.add('hidden');
     ['salMonth','ccMonth','incMonth','otherMonth','forecastMonth'].forEach(buildMonthOptions);
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('editLoanModal').classList.remove('open');closeMonthPanel();}});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){['editLoanModal','editIncomeModal','editSalaryModal','editCCModal','editOtherModal'].forEach(id=>document.getElementById(id).classList.remove('open'));closeMonthPanel();}});
     loadAll();
   } catch(e) {
     document.getElementById('loginError').textContent = 'שגיאת חיבור, נסה שוב';
@@ -765,6 +866,81 @@ _auth.onAuthStateChanged(async (user) => {
   <div id="monthPanelBody" class="month-panel-body"></div>
 </div>
 
+<!-- Edit Income Modal -->
+<div class="modal-overlay" id="editIncomeModal">
+  <div class="modal-box">
+    <h3><i class="ti ti-pencil"></i> עריכת הכנסה</h3>
+    <input type="hidden" id="editIncomeId">
+    <div class="form-grid">
+      <div><div class="form-label">מקור / לקוח</div><input type="text" id="editIncSource"></div>
+      <div><div class="form-label">סכום (₪)</div><input type="number" id="editIncAmount"></div>
+      <div><div class="form-label">חודש</div><input type="month" id="editIncMonth"></div>
+      <div><div class="form-label">הסתברות %</div><input type="number" id="editIncProb"></div>
+      <div><div class="form-label">תאריך מדויק</div><input type="date" id="editIncDate"></div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="document.getElementById('editIncomeModal').classList.remove('open')">ביטול</button>
+      <button class="primary" onclick="saveIncomeEdit()"><i class="ti ti-check"></i> שמור</button>
+    </div>
+  </div>
+</div>
+<!-- Edit Salary Modal -->
+<div class="modal-overlay" id="editSalaryModal">
+  <div class="modal-box">
+    <h3><i class="ti ti-pencil"></i> עריכת שכר</h3>
+    <input type="hidden" id="editSalId">
+    <div class="form-grid">
+      <div><div class="form-label">חודש</div><input type="month" id="editSalMonth"></div>
+      <div><div class="form-label">סה"כ שכר (₪)</div><input type="number" id="editSalAmount"></div>
+      <div><div class="form-label">הערות</div><input type="text" id="editSalNotes"></div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="document.getElementById('editSalaryModal').classList.remove('open')">ביטול</button>
+      <button class="primary" onclick="saveSalaryEdit()"><i class="ti ti-check"></i> שמור</button>
+    </div>
+  </div>
+</div>
+<!-- Edit CC Modal -->
+<div class="modal-overlay" id="editCCModal">
+  <div class="modal-box">
+    <h3><i class="ti ti-pencil"></i> עריכת כרטיס אשראי</h3>
+    <input type="hidden" id="editCCId">
+    <div class="form-grid">
+      <div><div class="form-label">כרטיס</div>
+        <select id="editCCName">
+          <option>לאומי דיינרס 3248</option>
+          <option>בינלאומי דיינרס 8870</option>
+          <option>לאומי ויזה 0777</option>
+          <option>פועלים 9564</option>
+          <option>בינלאומי דיינרס 9332</option>
+        </select>
+      </div>
+      <div><div class="form-label">חודש</div><input type="month" id="editCCMonth"></div>
+      <div><div class="form-label">סכום (₪)</div><input type="number" id="editCCAmount"></div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="document.getElementById('editCCModal').classList.remove('open')">ביטול</button>
+      <button class="primary" onclick="saveCCEdit()"><i class="ti ti-check"></i> שמור</button>
+    </div>
+  </div>
+</div>
+<!-- Edit Other Expense Modal -->
+<div class="modal-overlay" id="editOtherModal">
+  <div class="modal-box">
+    <h3><i class="ti ti-pencil"></i> עריכת הוצאה</h3>
+    <input type="hidden" id="editOtherId">
+    <div class="form-grid">
+      <div><div class="form-label">קטגוריה</div><input type="text" id="editOtherCat"></div>
+      <div><div class="form-label">חודש התחלה</div><input type="month" id="editOtherMonth"></div>
+      <div><div class="form-label">סכום (₪)</div><input type="number" id="editOtherAmount"></div>
+      <div style="display:flex;align-items:center;gap:6px;padding-top:18px"><input type="checkbox" id="editOtherRecurring" style="width:auto"><label for="editOtherRecurring" style="font-size:12px">חוזר כל חודש</label></div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="document.getElementById('editOtherModal').classList.remove('open')">ביטול</button>
+      <button class="primary" onclick="saveOtherEdit()"><i class="ti ti-check"></i> שמור</button>
+    </div>
+  </div>
+</div>
 <!-- Edit Loan Modal -->
 <div class="modal-overlay" id="editLoanModal">
   <div class="modal-box">
