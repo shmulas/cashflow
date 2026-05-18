@@ -116,7 +116,20 @@ async function runSync() {
   });
   if (!ins.ok) throw new Error(await ins.text());
   const rows = await ins.json();
-  return { synced: rows.length, skipped, items: rows.map(r => ({ source: r.source, amount: r.amount, month: r.month, type: r.type })) };
+  const invoice = rows.filter(r => r.type === 'invoice');
+  const collection = rows.filter(r => r.type === 'collection');
+  return {
+    synced: rows.length,
+    skipped_count: skipped.length,
+    skipped,
+    summary: {
+      invoice_count: invoice.length,
+      invoice_total: invoice.reduce((s, r) => s + r.amount, 0),
+      collection_count: collection.length,
+      collection_total: collection.reduce((s, r) => s + r.amount, 0),
+    },
+    items: rows.map(r => ({ source: r.source, amount: r.amount, month: r.month, type: r.type, date: r.date })),
+  };
 }
 
 module.exports = async (req, res) => {
