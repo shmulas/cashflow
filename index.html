@@ -171,7 +171,7 @@ button.danger:hover{background:#FCEBEB}
           <option value="regular">רגילות</option>
           <option value="balloon">בלון</option>
         </select></th>
-        <th>בנק</th><th>שם</th><th>קרן</th><th>יתרה</th><th>תשלום</th><th>תחילה</th><th>סיום</th><th></th>
+        <th>בנק</th><th>שם</th><th>קרן</th><th>יתרה</th><th>תשלום</th><th>תחילה</th><th>סיום</th><th>יום</th><th></th>
       </tr></thead>
       <tbody id="loansTbody"><tr><td colspan="9" class="empty">טוען...</td></tr></tbody></table>
     </div>
@@ -187,6 +187,7 @@ button.danger:hover{background:#FCEBEB}
       <div><div class="form-label">ריבית %</div><input type="number" id="loanRate" step="0.1"></div>
       <div><div class="form-label">תחילה</div><input type="date" id="loanStart"></div>
       <div><div class="form-label">סיום</div><input type="date" id="loanEnd"></div>
+      <div><div class="form-label">יום הורדה בחודש</div><input type="number" id="loanPaymentDay" min="1" max="31" placeholder="1"></div>
       <div style="display:flex;align-items:center;gap:6px;padding-top:18px"><input type="checkbox" id="loanBalloon" style="width:auto"><label for="loanBalloon" style="font-size:12px">פירעון בלון</label></div>
     </div>
     <button class="primary" onclick="addLoan()"><i class="ti ti-plus" aria-hidden="true"></i> הוסף</button>
@@ -384,7 +385,7 @@ function calcMonthProjected(m){
   const inc=state.income.filter(i=>i.month===m&&af(i.date||`${m}-01`)).reduce((s,i)=>s+i.amount*(i.prob/100),0);
   const loans=state.loans.reduce((s,l)=>{
     if(loanPmt(l,m)<=0)return s;
-    const day=l.start&&l.start.length===10?l.start.substring(8):'01';
+    const day=l.payment_day?String(l.payment_day).padStart(2,'0'):(l.start&&l.start.length===10?l.start.substring(8):'01');
     return af(`${m}-${day}`)?s+l.payment:s;
   },0);
   const sal=state.salary.filter(s=>s.month===m&&af(s.date||`${m}-01`)).reduce((s,i)=>s+i.amount,0);
@@ -470,7 +471,7 @@ function buildLedger(m,openingBal){
   });
   state.loans.forEach(l=>{
     if(loanPmt(l,m)<=0)return;
-    const day=l.start&&l.start.length===10?l.start.substring(8):'01';
+    const day=l.payment_day?String(l.payment_day).padStart(2,'0'):(l.start&&l.start.length===10?l.start.substring(8):'01');
     entries.push({date:`${m}-${day}`,label:`הלוואה – ${l.name}`,amount:l.payment,dir:-1,color:'#9B2020'});
   });
   entries.sort((a,b)=>a.date.localeCompare(b.date));
@@ -527,12 +528,13 @@ function renderLoans(){
     <td>${l.payment>0?fmt(l.payment)+'/חו׳':'—'}</td>
     <td style="white-space:nowrap;font-size:12px">${fmtDate(l.start)}</td>
     <td style="white-space:nowrap;font-size:12px">${fmtDate(l.end)}</td>
+    <td style="font-size:11px;color:#666">${l.payment_day?'יום '+l.payment_day:''}</td>
     <td style="display:flex;gap:4px">
       <button onclick="editLoan(${l.id})"><i class="ti ti-pencil"></i></button>
       <button class="danger" onclick="removeLoan(${l.id})"><i class="ti ti-trash"></i></button>
     </td>
-  </tr>`).join(''):`<tr><td colspan="9" class="empty">אין הלוואות</td></tr>`)
-  +`<tr style="font-weight:500;background:#f8f8f6"><td colspan="4">סה"כ חוב</td><td style="color:#E24B4A">${fmt(tot)}</td><td colspan="4"></td></tr>`;
+  </tr>`).join(''):`<tr><td colspan="10" class="empty">אין הלוואות</td></tr>`)
+  +`<tr style="font-weight:500;background:#f8f8f6"><td colspan="4">סה"כ חוב</td><td style="color:#E24B4A">${fmt(tot)}</td><td colspan="5"></td></tr>`;
 }
 
 async function addLoan(){
@@ -541,13 +543,14 @@ async function addLoan(){
   const payment=parseFloat(document.getElementById('loanPayment').value)||0,rate=parseFloat(document.getElementById('loanRate').value)||0;
   const start=document.getElementById('loanStart').value,end=document.getElementById('loanEnd').value;
   const balloon=document.getElementById('loanBalloon').checked;
+  const payment_day=parseInt(document.getElementById('loanPaymentDay').value)||null;
   if(!name||!principal||!balance||!start||!end)return alert('מלא שדות חובה');
   try{
-    const row=await db('POST','loans',{bank,name,principal,balance,payment,rate,start_month:start,end_month:end,balloon});
+    const row=await db('POST','loans',{bank,name,principal,balance,payment,rate,start_month:start,end_month:end,balloon,payment_day});
     const r=Array.isArray(row)?row[0]:row;
-    state.loans.push({...r,start,end,balloon});
+    state.loans.push({...r,start,end,balloon,payment_day});
     renderLoans();updateAll();toast('הלוואה נוספה');
-    ['loanName','loanPrincipal','loanBalance','loanPayment','loanRate','loanStart','loanEnd'].forEach(id=>document.getElementById(id).value='');
+    ['loanName','loanPrincipal','loanBalance','loanPayment','loanRate','loanStart','loanEnd','loanPaymentDay'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('loanBalloon').checked=false;
   }catch(e){alert('שגיאה: '+e.message);}
 }
@@ -563,6 +566,7 @@ function editLoan(id){
   document.getElementById('editLoanStart').value=l.start||'';
   document.getElementById('editLoanEnd').value=l.end||'';
   document.getElementById('editLoanBalloon').checked=!!l.balloon;
+  document.getElementById('editLoanPaymentDay').value=l.payment_day||'';
   document.getElementById('editLoanModal').classList.add('open');
 }
 async function saveLoanEdit(){
@@ -576,11 +580,12 @@ async function saveLoanEdit(){
   const start=document.getElementById('editLoanStart').value;
   const end=document.getElementById('editLoanEnd').value;
   const balloon=document.getElementById('editLoanBalloon').checked;
+  const payment_day=parseInt(document.getElementById('editLoanPaymentDay').value)||null;
   if(!name||!principal||!balance||!start||!end)return alert('מלא שדות חובה');
   try{
-    await db('PATCH','loans',{bank,name,principal,balance,payment,rate,start_month:start,end_month:end,balloon},`?id=eq.${id}`);
+    await db('PATCH','loans',{bank,name,principal,balance,payment,rate,start_month:start,end_month:end,balloon,payment_day},`?id=eq.${id}`);
     const idx=state.loans.findIndex(l=>l.id===id);
-    if(idx>=0)state.loans[idx]={...state.loans[idx],bank,name,principal,balance,payment,rate,start,end,balloon};
+    if(idx>=0)state.loans[idx]={...state.loans[idx],bank,name,principal,balance,payment,rate,start,end,balloon,payment_day};
     document.getElementById('editLoanModal').classList.remove('open');
     renderLoans();updateAll();toast('הלוואה עודכנה');
   }catch(e){alert('שגיאה: '+e.message);}
@@ -976,6 +981,7 @@ _auth.onAuthStateChanged(async (user) => {
       <div><div class="form-label">ריבית %</div><input type="number" id="editLoanRate" step="0.1"></div>
       <div><div class="form-label">תחילה</div><input type="date" id="editLoanStart"></div>
       <div><div class="form-label">סיום</div><input type="date" id="editLoanEnd"></div>
+      <div><div class="form-label">יום הורדה בחודש</div><input type="number" id="editLoanPaymentDay" min="1" max="31" placeholder="1"></div>
       <div style="display:flex;align-items:center;gap:6px;padding-top:18px"><input type="checkbox" id="editLoanBalloon" style="width:auto"><label for="editLoanBalloon" style="font-size:12px">פירעון בלון</label></div>
     </div>
     <div class="modal-actions">
