@@ -440,22 +440,30 @@ function updateAll(){
 
 function buildLedger(m,openingBal){
   const entries=[];
+  const curM=localYM(new Date());
+  const today=new Date().toISOString().substring(0,10);
+  const cutoff=m===curM?today:null;
   state.income.filter(i=>i.month===m).forEach(i=>{
-    entries.push({date:i.date||`${m}-01`,label:i.source,amount:Math.round(i.amount*(i.prob/100)),dir:1,type:i.type});
+    const d=i.date||`${m}-01`;if(cutoff&&d<cutoff)return;
+    entries.push({date:d,label:i.source,amount:Math.round(i.amount*(i.prob/100)),dir:1,type:i.type});
   });
   state.salary.filter(s=>s.month===m).forEach(s=>{
-    entries.push({date:`${m}-01`,label:'שכר'+(s.notes?` – ${s.notes}`:''),amount:s.amount,dir:-1,color:'#E24B4A'});
+    const d=s.date||`${m}-01`;if(cutoff&&d<cutoff)return;
+    entries.push({date:d,label:'שכר'+(s.notes?` – ${s.notes}`:''),amount:s.amount,dir:-1,color:'#E24B4A'});
   });
   state.cc.filter(c=>c.month===m).forEach(c=>{
-    entries.push({date:`${m}-01`,label:`אשראי – ${c.name}`,amount:c.amount,dir:-1,color:'#F4845F'});
+    const d=c.date||`${m}-01`;if(cutoff&&d<cutoff)return;
+    entries.push({date:d,label:`אשראי – ${c.name}`,amount:c.amount,dir:-1,color:'#F4845F'});
   });
   state.other.filter(o=>(o.recurring&&m>=o.month)||(!o.recurring&&o.month===m)).forEach(o=>{
-    entries.push({date:o.date||`${m}-01`,label:o.category,amount:o.amount,dir:-1,color:'#C9A96E'});
+    const d=o.date||`${m}-01`;if(cutoff&&d<cutoff)return;
+    entries.push({date:d,label:o.category,amount:o.amount,dir:-1,color:'#C9A96E'});
   });
   state.loans.forEach(l=>{
     if(loanPmt(l,m)<=0)return;
     const day=l.start&&l.start.length===10?l.start.substring(8):'01';
-    entries.push({date:`${m}-${day}`,label:`הלוואה – ${l.name}`,amount:l.payment,dir:-1,color:'#9B2020'});
+    const d=`${m}-${day}`;if(cutoff&&d<cutoff)return;
+    entries.push({date:d,label:`הלוואה – ${l.name}`,amount:l.payment,dir:-1,color:'#9B2020'});
   });
   entries.sort((a,b)=>a.date.localeCompare(b.date));
   let bal=openingBal;
@@ -465,7 +473,8 @@ function buildLedger(m,openingBal){
 function openMonthPanel(m,openingBal){
   const [y,mo]=m.split('-');
   const title=new Date(+y,+mo-1).toLocaleString('he',{month:'long',year:'numeric'});
-  document.getElementById('monthPanelTitle').textContent=title;
+  const isCurrentMonth=m===localYM(new Date());
+  document.getElementById('monthPanelTitle').textContent=title+(isCurrentMonth?' (מהיום)':'');
   const entries=buildLedger(m,openingBal);
   const closingBal=entries.length?entries[entries.length-1].balance:openingBal;
   const fmtBal=v=>(v<0?'-':'')+fmt(v);
