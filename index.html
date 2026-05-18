@@ -123,6 +123,7 @@ button.danger:hover{background:#FCEBEB}
   <button class="tab" onclick="showTab('income')">הכנסות</button>
   <button class="tab" onclick="showTab('expenses')">הוצאות</button>
   <button class="tab" onclick="showTab('breakdown')">P&L</button>
+  <button class="tab" onclick="showTab('daily')">יומי</button>
 </div>
 
 <!-- OVERVIEW -->
@@ -277,6 +278,24 @@ button.danger:hover{background:#FCEBEB}
   </div>
 </div>
 
+<!-- DAILY -->
+<div class="section" id="tab-daily">
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-line" aria-hidden="true"></i> תזרים יומי</div>
+    <div style="max-width:260px;margin-bottom:1rem">
+      <div class="form-label">בחר חודש</div>
+      <select id="dailyMonth" onchange="renderDailyChart(this.value)"></select>
+    </div>
+    <div class="legend">
+      <span><span class="leg-dot" style="background:#1D9E75"></span>הכנסות</span>
+      <span><span class="leg-dot" style="background:#E24B4A"></span>הוצאות</span>
+      <span><span class="leg-dot" style="background:#185FA5"></span>יתרה</span>
+    </div>
+    <div class="chart-wrap" style="height:320px"><canvas id="dailyChartCanvas"></canvas></div>
+    <div id="dailyEmpty" class="empty" style="display:none">אין נתונים לחודש זה</div>
+  </div>
+</div>
+
 <!-- BREAKDOWN -->
 <div class="section" id="tab-breakdown">
   <div class="card">
@@ -297,7 +316,7 @@ let BASE, KEY;
 const fmt=v=>'₪'+Math.round(Math.abs(v)).toLocaleString();
 const bankClass=b=>b==='בינלאומי'?'b-intl':b==='פועלים'?'b-poalim':b==='לאומי'?'b-leumi':b==='מזרחי'?'b-mizrahi':'';
 const state={loans:[],income:[],salary:[],cc:[],other:[],banks:[]};
-let mainChart=null;
+let mainChart=null,dailyChart=null;
 let _months=[],_balData=[];
 let _loanFilter='all';
 
@@ -350,10 +369,11 @@ function buildMonthOptions(selId){
 function showTab(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  ['overview','loans','income','expenses','breakdown'].forEach((t,i)=>{
+  ['overview','loans','income','expenses','breakdown','daily'].forEach((t,i)=>{
     if(t===name){document.querySelectorAll('.tab')[i].classList.add('active');document.getElementById('tab-'+t).classList.add('active');}
   });
   if(name==='overview'||name==='breakdown')updateAll();
+  if(name==='daily'){const sel=document.getElementById('dailyMonth');renderDailyChart(sel.value);}
 }
 
 function getMonths(){
@@ -507,6 +527,42 @@ function closeMonthPanel(){
   document.getElementById('panelOverlay').classList.remove('open');
 }
 
+function getOpeningBal(m){
+  const idx=_months.indexOf(m);
+  return idx>=0?_balData[idx]:state.banks.reduce((s,b)=>s+b.balance,0);
+}
+function renderDailyChart(m){
+  const emptyEl=document.getElementById('dailyEmpty');
+  if(!m){if(emptyEl)emptyEl.style.display='block';return;}
+  const entries=buildLedger(m,getOpeningBal(m));
+  if(emptyEl)emptyEl.style.display=entries.length?'none':'block';
+  const dateMap={};
+  entries.forEach(e=>{
+    if(!dateMap[e.date])dateMap[e.date]={inc:0,exp:0,balance:e.balance};
+    if(e.dir===1)dateMap[e.date].inc+=e.amount;
+    else dateMap[e.date].exp+=e.amount;
+    dateMap[e.date].balance=e.balance;
+  });
+  const openBal=getOpeningBal(m);
+  const dates=Object.keys(dateMap).sort();
+  const labels=[...dates.map(d=>fmtDate(d))];
+  const balData=[openBal,...dates.map(d=>dateMap[d].balance)];
+  const incData=[0,...dates.map(d=>dateMap[d].inc)];
+  const expData=[0,...dates.map(d=>-dateMap[d].exp)];
+  if(dailyChart)dailyChart.destroy();
+  dailyChart=new Chart(document.getElementById('dailyChartCanvas').getContext('2d'),{
+    data:{labels:['פתיחה',...labels],datasets:[
+      {type:'bar',label:'הכנסות',data:incData,backgroundColor:'rgba(29,158,117,0.75)',borderWidth:0,stack:'flow'},
+      {type:'bar',label:'הוצאות',data:expData,backgroundColor:'rgba(226,75,74,0.75)',borderWidth:0,stack:'flow'},
+      {type:'line',label:'יתרה',data:balData,borderColor:'#185FA5',backgroundColor:'transparent',borderWidth:2,pointRadius:4,tension:0.3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        label:ctx=>`${ctx.dataset.label}: ${ctx.raw<0?'-':''}₪${Math.round(Math.abs(ctx.raw)).toLocaleString()}`
+      }}},
+      scales:{x:{stacked:true,ticks:{font:{size:11},maxRotation:45}},y:{stacked:true,ticks:{callback:v=>'₪'+Math.round(v/1000)+'k'}}}}
+  });
+}
 function setLoanFilter(f){
   _loanFilter=f;
   const sel=document.getElementById('loanTypeFilter');
@@ -871,7 +927,7 @@ _auth.onAuthStateChanged(async (user) => {
     BASE = cfg.url;
     KEY = cfg.key;
     document.getElementById('loginScreen').classList.add('hidden');
-    ['salMonth','ccMonth','incMonth','otherMonth','forecastMonth'].forEach(buildMonthOptions);
+    ['salMonth','ccMonth','incMonth','otherMonth','forecastMonth','dailyMonth'].forEach(buildMonthOptions);
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){['editLoanModal','editIncomeModal','editSalaryModal','editCCModal','editOtherModal'].forEach(id=>document.getElementById(id).classList.remove('open'));closeMonthPanel();}});
     loadAll();
   } catch(e) {
