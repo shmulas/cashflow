@@ -376,8 +376,12 @@ function calcMonth(m){
 }
 
 function updateAll(){
-  const months=getMonths();let tInc=0,tInv=0,tColl=0,tForecast=0,tExp=0;
-  months.forEach(m=>{const c=calcMonth(m);tInc+=c.inc;tInv+=c.inv;tColl+=c.coll;tForecast+=c.forecast;tExp+=c.exp;});
+  const months=getMonths();let tExp=0;
+  months.forEach(m=>{tExp+=calcMonth(m).exp;});
+  const tInv=state.income.filter(i=>!i.type||i.type==='invoice').reduce((s,i)=>s+i.amount*(i.prob/100),0);
+  const tColl=state.income.filter(i=>i.type==='collection').reduce((s,i)=>s+i.amount*(i.prob/100),0);
+  const tForecast=state.income.filter(i=>i.type==='expected').reduce((s,i)=>s+i.amount*(i.prob/100),0);
+  const tInc=tInv+tColl+tForecast;
   const net=tInc-tExp;
   document.getElementById('kpiIn').textContent=fmt(tInv);
   document.getElementById('kpiForecast').textContent=fmt(tForecast);
