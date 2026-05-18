@@ -356,7 +356,7 @@ function showTab(name){
 
 function getMonths(){
   const now=new Date(),cur=localYM(now),months=[];
-  for(let i=0;i<13;i++){const d=new Date(now.getFullYear(),now.getMonth()+i,1);months.push(localYM(d));}
+  for(let i=0;i<6;i++){const d=new Date(now.getFullYear(),now.getMonth()+i,1);months.push(localYM(d));}
   return months;
 }
 
