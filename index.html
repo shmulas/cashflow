@@ -208,6 +208,7 @@ button.danger:hover{background:#FCEBEB}
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="primary" onclick="addIncome()"><i class="ti ti-plus" aria-hidden="true"></i> הוסף ידנית</button>
       <button onclick="syncMonday(this)" style="display:flex;align-items:center;gap:6px"><i class="ti ti-refresh" aria-hidden="true"></i> סנכרן Monday</button>
+      <button onclick="exportIncomeCSV()" style="display:flex;align-items:center;gap:6px"><i class="ti ti-table-export" aria-hidden="true"></i> ייצא לאקסל</button>
     </div>
     <table style="margin-top:1rem">
       <thead><tr><th>סוג</th><th>מקור</th><th>תאריך</th><th>סכום</th><th>%</th><th>משוקלל</th><th></th></tr></thead>
@@ -699,6 +700,26 @@ function typeBadge(type){
   if(type==='collection') return '<span style="background:#FEF9C3;color:#854D0E;border-radius:4px;padding:1px 6px;font-size:10px">גביה</span>';
   if(type==='expected')   return '<span style="background:#E0F2FE;color:#0369A1;border-radius:4px;padding:1px 6px;font-size:10px">צפי</span>';
   return '<span style="background:#DCFCE7;color:#166534;border-radius:4px;padding:1px 6px;font-size:10px">חשבונית</span>';
+}
+function exportIncomeCSV(){
+  const typeLabel={invoice:'חשבונית',collection:'גביה',expected:'צפי'};
+  const rows=[['סוג','מקור / לקוח','חודש','תאריך מדויק','סכום','הסתברות %','משוקלל']];
+  state.income.forEach(i=>{
+    rows.push([
+      typeLabel[i.type]||'חשבונית',
+      i.source,
+      i.month,
+      i.date||'',
+      i.amount,
+      i.prob,
+      Math.round(i.amount*(i.prob/100))
+    ]);
+  });
+  const csv='﻿'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`הכנסות_${localYM(new Date())}.csv`;
+  a.click();
 }
 function renderIncome(){
   const tb=document.getElementById('incomeTbody');
