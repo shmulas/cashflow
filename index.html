@@ -128,15 +128,18 @@ button.danger:hover{background:#FCEBEB}
 
 <!-- OVERVIEW -->
 <div class="section active" id="tab-overview">
-  <div class="legend">
-    <span><span class="leg-dot" style="background:#1D9E75"></span>הכנסות</span>
-    <span><span class="leg-dot" style="background:#FACC15"></span>גביה</span>
-    <span><span class="leg-dot" style="background:#38BDF8"></span>צפי חשבוניות</span>
-    <span><span class="leg-dot" style="background:#E24B4A"></span>שכר</span>
-    <span><span class="leg-dot" style="background:#9B2020"></span>הלוואות</span>
-    <span><span class="leg-dot" style="background:#F4845F"></span>אשראי</span>
-    <span><span class="leg-dot" style="background:#C9A96E"></span>אחר</span>
-    <span><span class="leg-dot" style="background:#185FA5"></span>יתרה</span>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+    <div class="legend" style="margin-bottom:0">
+      <span><span class="leg-dot" style="background:#1D9E75"></span>הכנסות</span>
+      <span><span class="leg-dot" style="background:#FACC15"></span>גביה</span>
+      <span><span class="leg-dot" style="background:#38BDF8"></span>צפי חשבוניות</span>
+      <span><span class="leg-dot" style="background:#E24B4A"></span>שכר</span>
+      <span><span class="leg-dot" style="background:#9B2020"></span>הלוואות</span>
+      <span><span class="leg-dot" style="background:#F4845F"></span>אשראי</span>
+      <span><span class="leg-dot" style="background:#C9A96E"></span>אחר</span>
+      <span><span class="leg-dot" style="background:#185FA5"></span>יתרה</span>
+    </div>
+    <button onclick="exportLedgerCSV()" style="display:flex;align-items:center;gap:6px;white-space:nowrap"><i class="ti ti-table-export"></i> ייצא תזרים לאקסל</button>
   </div>
   <div class="chart-wrap"><canvas id="mainChart" role="img" aria-label="תרשים תזרים חודשי"></canvas></div>
   <div class="card" style="margin-top:1rem">
@@ -700,6 +703,61 @@ function typeBadge(type){
   if(type==='collection') return '<span style="background:#FEF9C3;color:#854D0E;border-radius:4px;padding:1px 6px;font-size:10px">גביה</span>';
   if(type==='expected')   return '<span style="background:#E0F2FE;color:#0369A1;border-radius:4px;padding:1px 6px;font-size:10px">צפי</span>';
   return '<span style="background:#DCFCE7;color:#166534;border-radius:4px;padding:1px 6px;font-size:10px">חשבונית</span>';
+}
+function exportLedgerCSV(){
+  // Build the full month range: chart window + any month present in data
+  const chartMonths=getMonths();
+  const allDataMonths=new Set([
+    ...chartMonths,
+    ...state.income.map(i=>i.month),
+    ...state.salary.map(s=>s.month),
+    ...state.cc.map(c=>c.month),
+    ...state.other.map(o=>o.month),
+  ]);
+  const sortedMonths=[...allDataMonths].sort();
+
+  const entries=[];
+
+  state.income.forEach(i=>{
+    entries.push({date:i.date||`${i.month}-01`,label:i.source,type:i.type==='collection'?'גביה':i.type==='expected'?'צפי חשבונית':'חשבונית',inAmt:Math.round(i.amount*(i.prob/100)),outAmt:0});
+  });
+  state.salary.forEach(s=>{
+    entries.push({date:s.date||`${s.month}-01`,label:'שכר'+(s.notes?` – ${s.notes}`:''),type:'שכר',inAmt:0,outAmt:s.amount});
+  });
+  state.cc.forEach(c=>{
+    entries.push({date:c.date||`${c.month}-01`,label:`אשראי – ${c.name}`,type:'אשראי',inAmt:0,outAmt:c.amount});
+  });
+  state.other.forEach(o=>{
+    const day=o.date?o.date.substring(8):'01';
+    const applyMonths=o.recurring?sortedMonths.filter(m=>m>=o.month):[o.month];
+    applyMonths.forEach(m=>{
+      entries.push({date:`${m}-${day}`,label:o.category,type:'הוצאה אחרת',inAmt:0,outAmt:o.amount});
+    });
+  });
+  state.loans.forEach(l=>{
+    sortedMonths.forEach(m=>{
+      if(loanPmt(l,m)<=0)return;
+      const day=l.payment_day?String(l.payment_day).padStart(2,'0'):(l.start&&l.start.length===10?l.start.substring(8):'01');
+      entries.push({date:`${m}-${day}`,label:`הלוואה – ${l.name}`,type:'הלוואה',inAmt:0,outAmt:l.payment});
+    });
+  });
+
+  entries.sort((a,b)=>a.date.localeCompare(b.date));
+
+  const bankTotal=state.banks.reduce((s,b)=>s+b.balance,0);
+  let bal=bankTotal;
+  const rows=[['תאריך','תיאור','סוג','כניסה (₪)','יציאה (₪)','יתרה (₪)']];
+  rows.push(['','יתרת פתיחה (נכון להיום)','','','',bankTotal]);
+  entries.forEach(e=>{
+    bal+=e.inAmt-e.outAmt;
+    rows.push([fmtDate(e.date),e.label,e.type,e.inAmt||'',e.outAmt||'',bal]);
+  });
+
+  const csv='﻿'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`תזרים_${localYM(new Date())}.csv`;
+  a.click();
 }
 function exportIncomeCSV(){
   const typeLabel={invoice:'חשבונית',collection:'גביה',expected:'צפי'};
